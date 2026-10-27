@@ -7,12 +7,12 @@
 
 // 1) Cole aqui a configuração do seu app Web do Firebase
 export const firebaseConfig = {
-  apiKey: "COLE_AQUI_SUA_API_KEY",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyA23bFLMol-6c15spR-8PqD1rcPaW_F63E",
+  authDomain: "teclaninja-escola.firebaseapp.com",
+  projectId: "teclaninja-escola",
+  storageBucket: "teclaninja-escola.firebasestorage.app",
+  messagingSenderId: "203116530041",
+  appId: "1:203116530041:web:35227544f0cbbfe52507a8"
 };
 
 // 2) Contas Google que podem acessar o Painel do Professor.
