@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// Regras de segurança do TeclaNinja.
+// IMPORTANTE: coloque aqui os mesmos e-mails de professor que estão em public/js/config.js
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() {
+      return request.auth != null;
+    }
+
+    function professor() {
+      return logado() && request.auth.token.email in [
+        'paulo15356@go.docente.senai.br'
+      ];
+    }
+
+    function dono(uid) {
+      return logado() && request.auth.uid == uid;
+    }
+
+    // Progresso de cada aluno: só o próprio aluno e o professor leem.
+    match /alunos/{uid} {
+      allow read: if dono(uid) || professor();
+      allow create, update: if dono(uid) || professor();
+      allow delete: if professor();
+
+      match /sessoes/{id} {
+        allow read: if dono(uid) || professor();
+        allow create: if dono(uid);
+        allow delete: if professor();
+      }
+    }
+
+    // Ranking: só nome, nível e XP (visível para quem está logado).
+    match /ranking/{uid} {
+      allow read: if logado();
+      allow write: if dono(uid) || professor();
+    }
+
+    // Turmas: alunos leem para entrar pelo código; só o professor cria/apaga.
+    match /turmas/{codigo} {
+      allow read: if logado();
+      allow write: if professor();
+    }
+  }
+}
