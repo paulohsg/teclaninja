@@ -1,40 +1,71 @@
 // Aplicativo do aluno.
-import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, salvarRanking, lerRanking, ehProfessor } from './store.js';
+import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor } from './store.js';
 import { LICOES, MODULOS, FRASES, gerarExercicios, palavrasPara } from './licoes.js';
 import { criarTeclado, criarMaos, passos, codeDe } from './teclado.js';
 import { Motor } from './motor.js';
 import { JOGOS, iniciarJogo } from './jogos.js';
 import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUISTAS, sequencia, teclasAprendidas, licaoLiberada, meta3, decTecla, dadosRanking, precisaoGeral, licoesFeitas, totalEstrelas } from './progresso.js';
-import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd, GOOGLE_SVG } from './ui.js';
+import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd } from './ui.js';
 
 const app = $('#app');
 const S = { user: null, aluno: null, limpeza: null };
 
 aplicarTema();
 addEventListener('hashchange', rotear);
-observarLogin(async (user, erro) => {
-  if (!user) { S.user = S.aluno = null; return telaLogin(erro); }
+observarLogin(async user => {
+  if (!user) { S.user = S.aluno = null; return telaLogin(); }
+  // Contas Google são só para professores; alunos entram com nome, turma e senha.
+  if (!user.aluno && !ehProfessor(user.email) && MODO === 'firebase') {
+    await sair();
+    return telaLogin('Esta conta não é de professor. Alunos entram com nome, turma e senha.');
+  }
   S.user = user;
   try {
     let a = await lerAluno(user.uid);
-    a = a ? normalizar(a) : novoAluno(user);
-    Object.assign(a, { nome: user.nome, email: user.email, foto: user.foto || a.foto, ultimoAcesso: Date.now() });
+    if (!a) a = novoAluno(perfilPendente(user.uid) || (user.aluno ? await perfilDaChave(user) : user));
+    a = normalizar(a);
+    if (!user.aluno) Object.assign(a, { nome: user.nome, email: user.email, foto: user.foto || a.foto });
+    a.uid = user.uid; a.email = user.email; a.ultimoAcesso = Date.now();
     S.aluno = a;
     await salvarAluno(user.uid, a);
+    if (a.turma) await salvarRanking(user.uid, dadosRanking(a));
   } catch (e) {
     console.error(e);
+    await sair().catch(() => {});
     return telaLogin('Não foi possível carregar seus dados. Verifique a internet e tente de novo.');
   }
-  if (!S.aluno.turma && !ehProfessor(user.email)) return telaTurma();
   montarShell(); rotear();
 }).catch(e => {
   console.error(e);
   telaLogin('Não foi possível conectar ao servidor. Verifique a internet e recarregue a página.');
 });
 
+/** Reconstrói o perfil a partir do login (caso o cadastro tenha sido interrompido). */
+async function perfilDaChave(user) {
+  const partes = user.uid.split('.'), codigo = (partes.pop() || '').toUpperCase();
+  const cap = s => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const t = await lerTurma(codigo).catch(() => null);
+  const [primeiro = '', ultimo = ''] = partes.map(cap);
+  return { uid: user.uid, email: user.email, primeiro, ultimo, nome: `${primeiro} ${ultimo}`.trim(), turma: codigo, turmaNome: t?.nome || '', escola: t?.escola || '' };
+}
+
 /* ================================ Login ================================ */
+const nomeBonito = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+
+const ERROS_LOGIN = {
+  'auth/email-already-in-use': 'Já existe um cadastro com esse nome nesta turma. Use a aba "Entrar". Se esqueceu a senha, fale com o professor.',
+  'auth/invalid-credential': 'Nome, turma ou senha incorretos. Se é seu primeiro acesso, use a aba "Primeiro acesso".',
+  'auth/invalid-login-credentials': 'Nome, turma ou senha incorretos. Se é seu primeiro acesso, use a aba "Primeiro acesso".',
+  'auth/wrong-password': 'Senha incorreta. Se esqueceu a senha, fale com o professor.',
+  'auth/user-not-found': 'Não encontramos esse aluno nesta turma. Se é seu primeiro acesso, use a aba "Primeiro acesso".',
+  'auth/too-many-requests': 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.',
+  'auth/network-request-failed': 'Sem conexão com a internet. Verifique a rede e tente de novo.',
+  'auth/operation-not-allowed': 'O login por senha ainda não foi ativado no Firebase. Professor: veja o README (Parte 3).'
+};
+
 function telaLogin(erro = '') {
   limpar();
+  let modo = 'entrar', turmas = [];
   app.innerHTML = `<div class="login">
     <section class="login-hero">
       <div class="logo grande"><span class="logo-ic">⌨️</span><span>Tecla<b>Ninja</b></span></div>
@@ -48,51 +79,86 @@ function telaLogin(erro = '') {
       <div class="teclas-deco" aria-hidden="true">${'ASDF JKLÇ'.split('').map((c, i) => c === ' ' ? '<i class="gap"></i>' : `<span style="--i:${i}">${c}</span>`).join('')}</div>
     </section>
     <section class="login-card">
-      <h2>Entrar</h2>
-      ${MODO === 'firebase'
-        ? `<p class="muted">Use sua conta Google para salvar seu progresso.</p>
-           <button class="bt-google" id="entrar">${GOOGLE_SVG}<span>Entrar com Google</span></button>`
-        : `<p class="aviso">🧪 <b>Modo demonstração.</b> O Firebase ainda não foi configurado, então o progresso fica salvo só neste navegador. Veja o LEIA-ME para ativar o login com Google.</p>
-           <form id="f-demo" class="form-col"><label>Seu nome<input name="nome" required maxlength="40" placeholder="Ex.: Ana Souza" autocomplete="off"></label><button class="bt grande">Entrar</button></form>`}
-      ${erro ? `<p class="erro-msg">${esc(erro)}</p>` : ''}
+      <div class="abas-login" role="tablist">
+        <button type="button" role="tab" data-modo="entrar" class="ativo">Entrar</button>
+        <button type="button" role="tab" data-modo="cadastro">Primeiro acesso</button>
+      </div>
+      ${MODO === 'demo' ? '<p class="aviso">🧪 <b>Modo demonstração.</b> O Firebase ainda não foi configurado, então tudo fica salvo só neste navegador.</p>' : ''}
+      <form id="f-login" class="form-col" data-modo="entrar" novalidate>
+        <label>Escola<select id="l-escola" required disabled><option>Carregando...</option></select></label>
+        <label>Turma<select id="l-turma" required disabled></select></label>
+        <div class="duas">
+          <label>Primeiro nome<input id="l-primeiro" required maxlength="30" autocomplete="off" placeholder="Ex.: Ana"></label>
+          <label>Último sobrenome<input id="l-ultimo" required maxlength="30" autocomplete="off" placeholder="Ex.: Souza"></label>
+        </div>
+        <label>Senha<input id="l-senha" type="password" required minlength="4" maxlength="30" autocomplete="current-password"></label>
+        <label class="so-cadastro">Repita a senha<input id="l-senha2" type="password" minlength="4" maxlength="30" autocomplete="new-password"></label>
+        <p class="mini so-cadastro">Crie uma senha fácil de lembrar, com <b>pelo menos 4 caracteres</b>, e anote em um lugar seguro. Use sempre o mesmo nome e sobrenome para entrar.</p>
+        <button class="bt grande" id="l-bt">Entrar</button>
+      </form>
+      <p class="erro-msg" id="l-msg" role="alert">${esc(erro)}</p>
       <p class="mini">É professor(a)? <a href="professor.html">Acesse o painel do professor</a></p>
     </section>
   </div>`;
-  $('#entrar')?.addEventListener('click', async e => {
-    e.currentTarget.disabled = true;
-    try { await entrarGoogle(); } catch (err) {
-      console.error(err); e.currentTarget.disabled = false;
-      if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') toast('Não foi possível entrar: ' + esc(err?.message || err), 'erro');
-    }
-  });
-  $('#f-demo')?.addEventListener('submit', e => { e.preventDefault(); entrarDemo(new FormData(e.target).get('nome').trim()); });
-}
+  const form = $('#f-login'), selE = $('#l-escola'), selT = $('#l-turma'), msg = $('#l-msg'), bt = $('#l-bt');
+  const escolaDe = t => t.escola || 'Sem escola';
 
-function telaTurma() {
-  limpar();
-  app.innerHTML = `<div class="login centro"><section class="login-card">
-    <div class="big-emoji">🏫</div>
-    <h2>Olá, ${esc(primeiroNome(S.aluno.nome))}! 👋</h2>
-    <p class="muted">Digite o <b>código da sua turma</b>. Seu professor vai passar esse código.</p>
-    <form id="f-turma" class="form-col"><input name="codigo" maxlength="12" placeholder="Ex.: K7QF2M" autocomplete="off" class="codigo" required><button class="bt grande">Entrar na turma</button></form>
-    <p class="erro-msg" id="msg"></p>
-    ${MODO === 'demo' ? '<p class="mini">Demonstração: use o código <b>DEMO</b>.</p>' : ''}
-    <button class="link" id="sair">Sair da conta</button>
-  </section></div>`;
-  $('#sair').onclick = () => sair();
-  $('#f-turma').onsubmit = async e => {
+  $$('.abas-login button').forEach(b => b.onclick = () => {
+    modo = b.dataset.modo; form.dataset.modo = modo; msg.textContent = '';
+    $$('.abas-login button').forEach(x => x.classList.toggle('ativo', x === b));
+    bt.textContent = modo === 'cadastro' ? 'Criar meu acesso' : 'Entrar';
+    $('#l-senha').autocomplete = modo === 'cadastro' ? 'new-password' : 'current-password';
+  });
+
+  function preencherTurmas() {
+    const lista = turmas.filter(t => escolaDe(t) === selE.value).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+    selT.innerHTML = `<option value="">Escolha a turma</option>` + lista.map(t => `<option value="${esc(t.codigo)}">${esc(t.nome)}</option>`).join('');
+    selT.disabled = !lista.length;
+    const salva = ler('tn_turma', '');
+    if (lista.some(t => t.codigo === salva)) selT.value = salva;
+  }
+  selE.onchange = () => { gravar('tn_escola', selE.value); preencherTurmas(); };
+  selT.onchange = () => gravar('tn_turma', selT.value);
+
+  listarTurmas().then(ts => {
+    turmas = ts;
+    const escolas = [...new Set(ts.map(escolaDe))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    if (!escolas.length) {
+      selE.innerHTML = '<option>Nenhuma turma cadastrada</option>';
+      msg.textContent = 'Ainda não há turmas cadastradas. O professor precisa criar a turma no painel.';
+      return;
+    }
+    selE.innerHTML = `<option value="">Escolha a escola</option>` + escolas.map(e => `<option>${esc(e)}</option>`).join('');
+    selE.disabled = false;
+    const salva = ler('tn_escola', '');
+    if (escolas.includes(salva)) selE.value = salva; else if (escolas.length === 1) selE.value = escolas[0];
+    preencherTurmas();
+  }).catch(e => {
+    console.error(e);
+    selE.innerHTML = '<option>Erro ao carregar</option>';
+    msg.textContent = 'Não foi possível carregar as turmas. Verifique a internet e recarregue a página.';
+  });
+
+  form.onsubmit = async e => {
     e.preventDefault();
-    const codigo = new FormData(e.target).get('codigo').trim().toUpperCase();
-    $('#msg').textContent = '';
+    msg.textContent = '';
+    const primeiro = nomeBonito($('#l-primeiro').value), ultimo = nomeBonito($('#l-ultimo').value);
+    const senha = $('#l-senha').value, turma = turmas.find(t => t.codigo === selT.value);
+    const falha = !turma ? 'Escolha a escola e a turma.'
+      : !/\p{L}/u.test(primeiro) || !/\p{L}/u.test(ultimo) ? 'Digite seu primeiro nome e seu último sobrenome.'
+      : primeiro.includes(' ') ? 'No primeiro nome, digite só uma palavra (ex.: Ana).'
+      : senha.length < 4 ? 'A senha precisa ter pelo menos 4 caracteres.'
+      : modo === 'cadastro' && senha !== $('#l-senha2').value ? 'As duas senhas não são iguais.' : '';
+    if (falha) { msg.textContent = falha; return; }
+    bt.disabled = true;
     try {
-      const t = await lerTurma(codigo);
-      if (!t) { $('#msg').textContent = 'Código não encontrado. Confira com o professor.'; return; }
-      Object.assign(S.aluno, { turma: t.codigo, turmaNome: t.nome });
-      await salvarAluno(S.aluno.uid, S.aluno);
-      await salvarRanking(S.aluno.uid, dadosRanking(S.aluno));
-      toast(`Você entrou na turma <b>${esc(t.nome)}</b>! 🎉`, 'ok');
-      montarShell(); location.hash = '#/inicio'; rotear();
-    } catch (err) { console.error(err); $('#msg').textContent = 'Erro ao buscar a turma. Tente novamente.'; }
+      if (modo === 'cadastro') await cadastrarAluno({ primeiro, ultimo, turma, senha });
+      else await entrarAluno({ primeiro, ultimo, codigo: turma.codigo, senha });
+    } catch (err) {
+      if (!ERROS_LOGIN[err?.code]) console.error(err);
+      msg.textContent = ERROS_LOGIN[err?.code] || 'Não foi possível entrar: ' + (err?.message || err);
+      bt.disabled = false;
+    }
   };
 }
 
@@ -131,15 +197,13 @@ function menuUsuario(e) {
   const velho = $('.menu-user'); if (velho) return velho.remove();
   const a = S.aluno, m = document.createElement('div');
   m.className = 'menu-user';
-  m.innerHTML = `<div class="mu-cab">${avatar(a.nome, a.foto, 'g')}<div><b>${esc(a.nome)}</b><small>${esc(a.email)}</small>${a.turmaNome ? `<small>Turma: ${esc(a.turmaNome)}</small>` : ''}</div></div>
+  m.innerHTML = `<div class="mu-cab">${avatar(a.nome, a.foto, 'g')}<div><b>${esc(a.nome)}</b>${a.escola ? `<small>${esc(a.escola)}</small>` : ''}${a.turmaNome ? `<small>Turma: ${esc(a.turmaNome)}</small>` : ''}${S.user?.aluno ? '' : `<small>${esc(a.email)}</small>`}</div></div>
     ${ehProfessor(a.email) ? '<a href="professor.html">👩‍🏫 Painel do professor</a>' : ''}
-    <button id="mu-turma">🏫 Trocar de turma</button>
     <button id="mu-sair">🚪 Sair</button>`;
   document.body.append(m);
   const fechar = () => { m.remove(); removeEventListener('click', fechar); };
   setTimeout(() => addEventListener('click', fechar));
   $('#mu-sair', m).onclick = () => sair();
-  $('#mu-turma', m).onclick = () => { limpar(); telaTurma(); };
 }
 
 function limpar() { if (S.limpeza) { try { S.limpeza(); } catch { /* ok */ } S.limpeza = null; } }

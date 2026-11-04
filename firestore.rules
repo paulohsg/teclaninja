@@ -15,8 +15,12 @@ service cloud.firestore {
       ];
     }
 
-    function dono(uid) {
-      return logado() && request.auth.uid == uid;
+    // Alunos entram com nome + turma + senha. O login vira um e-mail interno
+    // "primeiro.ultimo.codigo@aluno.teclaninja.example", e o documento do aluno
+    // usa "primeiro.ultimo.codigo" como identificador.
+    function dono(id) {
+      return logado() && (request.auth.uid == id
+        || request.auth.token.email == id + '@aluno.teclaninja.example');
     }
 
     // Progresso de cada aluno: só o próprio aluno e o professor leem.
@@ -38,9 +42,10 @@ service cloud.firestore {
       allow write: if dono(uid) || professor();
     }
 
-    // Turmas: alunos leem para entrar pelo código; só o professor cria/apaga.
+    // Turmas: a lista de escolas e turmas aparece na tela de login (antes de entrar).
+    // Só o professor cria e apaga.
     match /turmas/{codigo} {
-      allow read: if logado();
+      allow read: if true;
       allow write: if professor();
     }
   }

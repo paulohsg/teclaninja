@@ -18,7 +18,8 @@ export function nivelDe(xp = 0) {
 
 export function novoAluno(u) {
   return {
-    uid: u.uid, nome: u.nome, email: u.email, foto: u.foto || '', turma: '', turmaNome: '',
+    uid: u.uid, nome: u.nome || '', email: u.email || '', foto: u.foto || '',
+    primeiro: u.primeiro || '', ultimo: u.ultimo || '', escola: u.escola || '', turma: u.turma || '', turmaNome: u.turmaNome || '',
     criadoEm: Date.now(), ultimoAcesso: Date.now(), xp: 0, melhorPpm: 0,
     licoes: {}, jogos: {}, conquistas: {}, dias: [],
     stats: { tempo: 0, acertos: 0, erros: 0, errosTecla: {} }

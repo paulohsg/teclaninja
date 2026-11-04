@@ -2,7 +2,8 @@
 
 Curso de digitação online, em português, para adolescentes. Tem 35 lições, 5 jogos, conquistas, ranking da turma e um painel para o professor acompanhar o progresso de cada aluno.
 
-- **Alunos** entram somente com a conta Google.
+- **Alunos** entram com **escola, turma, primeiro nome, último sobrenome e senha** (não precisam de conta Google).
+- **Professores** entram com a conta Google.
 - **O progresso** de cada aluno fica salvo na nuvem (Firebase).
 - **O professor** acessa `professor.html` para ver a turma.
 
@@ -43,7 +44,7 @@ Depois abra http://localhost:8000. Na página do professor (http://localhost:800
 
 ---
 
-## Colocar no ar com login Google (passo a passo)
+## Colocar no ar (passo a passo)
 
 O Firebase é um serviço do Google. O plano gratuito (Spark) é suficiente para várias turmas.
 
@@ -56,22 +57,27 @@ O Firebase é um serviço do Google. O plano gratuito (Spark) é suficiente para
 2. Dê um apelido (ex.: `site`) e clique em **Registrar app**.
 3. Vai aparecer um bloco `const firebaseConfig = { ... }`. Copie os valores para o arquivo **`public/js/config.js`**, substituindo os campos de exemplo.
 
-### 3. Ativar o login com Google
+### 3. Ativar os métodos de login
+São dois: **E-mail/senha** (alunos) e **Google** (professor).
+
 1. Menu **Criação → Authentication → Vamos começar**.
-2. Aba **Método de login** → **Google** → **Ativar** → escolha o e-mail de suporte → **Salvar**.
+2. Aba **Método de login** → **Adicionar novo provedor** → **E-mail/senha** → ative só a primeira chave (**E-mail/senha**; deixe "Link do e-mail" desligado) → **Salvar**.
+3. **Adicionar novo provedor** → **Google** → **Ativar** → escolha o e-mail de suporte → **Salvar**.
+
+> Os alunos não usam e-mail de verdade. O site cria um login interno no formato `nome.sobrenome.codigo@aluno.teclaninja.example`, que nunca recebe mensagens.
 
 ### 4. Criar o banco de dados
 1. Menu **Criação → Firestore Database → Criar banco de dados**.
 2. Local: **southamerica-east1 (São Paulo)**.
 3. Escolha **modo de produção** → **Criar**.
 4. Vá na aba **Regras**, apague tudo, cole o conteúdo do arquivo **`firestore.rules`** e clique em **Publicar**.
+   - Sempre que o arquivo `firestore.rules` mudar no repositório, copie e publique de novo.
 
 ### 5. Definir o(s) professor(es)
 O e-mail do professor precisa estar em **dois lugares** (já está preenchido com `paulo15356@go.docente.senai.br`):
 - `public/js/config.js` → lista `PROFESSORES`
 - `firestore.rules` → função `professor()` (lembre de publicar as regras de novo se mudar)
 
-Opcional: em `config.js`, `DOMINIO_ALUNOS` aceita só contas de um domínio da escola (ex.: `"aluno.senai.br"`).
 
 ### 6. Publicar o site (Firebase Hosting)
 Precisa do [Node.js](https://nodejs.org) instalado. No terminal, dentro da pasta `teclaninja`:
@@ -92,9 +98,17 @@ No final aparece o endereço do site, algo como `https://teclaninja-escola.web.a
 ## Primeira aula
 
 1. Abra `https://SEU-SITE/professor.html` e entre com sua conta Google.
-2. Na aba **Turmas**, crie a turma (ex.: "1º Ano A"). Aparece um **código** de 6 letras.
-3. Passe o endereço do site e o código para os alunos.
-4. Cada aluno entra com o Google e digita o código da turma no primeiro acesso.
+2. Na aba **Turmas**, crie as turmas informando a **escola** e o **nome da turma** (ex.: "Colégio Estadual Machado de Assis" + "1º Ano A"). Escreva o nome da escola sempre igual.
+3. Passe o endereço do site para os alunos.
+4. No **Primeiro acesso**, cada aluno escolhe a escola e a turma na lista, digita o **primeiro nome** e o **último sobrenome** e cria uma **senha de pelo menos 4 caracteres**.
+5. Nas próximas vezes, o aluno usa a aba **Entrar** com os mesmos dados. Acentos e maiúsculas não fazem diferença ("João" = "joao").
+
+> Dois alunos com o mesmo primeiro nome e último sobrenome na mesma turma: o segundo pode usar o nome do meio no lugar do sobrenome.
+
+### Quando um aluno esquece a senha
+1. No painel do professor, clique no aluno e abra **"O aluno esqueceu a senha?"**. Copie o login que aparece ali.
+2. No Firebase, vá em **Authentication → Usuários**, cole o login na busca, clique nos três pontinhos (⋮) → **Excluir conta**.
+3. O aluno faz o **Primeiro acesso** de novo, com o mesmo nome, sobrenome e turma, e cria outra senha. **O progresso é mantido.**
 
 ## Painel do professor
 
@@ -110,8 +124,10 @@ No final aparece o endereço do site, algo como `https://teclaninja-escola.web.a
 - **Teclado:** os alunos precisam estar com o layout **Português (Brasil ABNT2)** no sistema. Senão o Ç e os acentos não funcionam.
 - **Celular/tablet:** o curso foi feito para teclado físico.
 - **"Não foi possível carregar os dados" no painel:** o e-mail do professor não está nas regras do Firestore ou as regras não foram publicadas.
-- **Login bloqueado com conta da escola:** algumas escolas (Google Workspace) bloqueiam apps de terceiros. Peça ao administrador da conta para permitir o app do Firebase, ou use `DOMINIO_ALUNOS` vazio.
-- **Popup de login não abre:** permita popups para o site no navegador.
+- **Aluno vê "O login por senha ainda não foi ativado":** falta ativar o provedor **E-mail/senha** (Parte 3).
+- **A lista de escolas aparece vazia ou com erro:** crie uma turma no painel e confira se as regras do `firestore.rules` foram publicadas (Parte 4).
+- **Excluir uma turma:** os alunos dela deixam de conseguir entrar, porque o login usa a turma. O progresso continua salvo.
+- **Popup de login do professor não abre:** permita popups para o site no navegador.
 
 ## Estrutura dos arquivos
 

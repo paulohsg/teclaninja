@@ -484,3 +484,23 @@ input:focus, select:focus { border-color: var(--primaria); box-shadow: 0 0 0 4px
   .palco { height: 400px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ---------- Login do aluno (nome + turma + senha) ---------- */
+.login-card { text-align: left; }
+.login-card .mini { text-align: center; }
+.abas-login { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface2); border: 1px solid var(--borda); border-radius: 14px; margin-bottom: 1rem; }
+.abas-login button { border: 0; background: none; font: 600 .95rem Poppins, sans-serif; color: var(--muted); padding: .6rem; border-radius: 10px; cursor: pointer; }
+.abas-login button.ativo { background: var(--surface); color: var(--primaria); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.abas-login button:focus-visible { outline: 2px solid var(--primaria); }
+.duas { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.form-col select, .form-col input { width: 100%; }
+#f-login[data-modo="entrar"] .so-cadastro { display: none; }
+#f-login .mini { text-align: left; margin: 0; }
+.d-block { display: block; font-size: .76rem; }
+.caixa-senha { margin-top: 1rem; background: color-mix(in srgb, var(--aviso) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--aviso) 35%, transparent); border-radius: 12px; padding: .7rem 1rem; font-size: .9rem; }
+.caixa-senha summary { cursor: pointer; font-weight: 700; }
+.caixa-senha ol { margin: .6rem 0 0; padding-left: 1.2rem; display: grid; gap: .4rem; }
+.caixa-senha code { word-break: break-all; }
+.linha-form input[name="escola"] { flex: 1.4; }
+@media (max-width: 420px) { .duas { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .login-card { order: -1; margin: 0 auto; } .login-hero h1 { font-size: 1.8rem; } .teclas-deco { display: none; } }

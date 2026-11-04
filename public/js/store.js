@@ -1,5 +1,5 @@
 // Camada de dados: Firebase (login Google + Firestore) ou modo demonstração (localStorage).
-import { firebaseConfig, PROFESSORES, DOMINIO_ALUNOS } from './config.js';
+import { firebaseConfig, PROFESSORES } from './config.js';
 
 export const MODO = firebaseConfig.apiKey && !/^COLE/.test(firebaseConfig.apiKey) ? 'firebase' : 'demo';
 export const ehProfessor = email => PROFESSORES.some(p => p.trim().toLowerCase() === String(email || '').toLowerCase());
@@ -20,7 +20,26 @@ function fb() {
     return { auth: Au.getAuth(app), db: F.getFirestore(app), Au, F };
   })();
 }
-const usuarioDe = u => u && { uid: u.uid, nome: u.displayName || u.email, email: u.email, foto: u.photoURL || '' };
+
+// Alunos entram com nome + turma + senha. Por trás, o Firebase usa um e-mail interno
+// (nunca recebe mensagens) no formato primeiro.ultimo.codigo@aluno.teclaninja.example
+export const DOMINIO_LOGIN = 'aluno.teclaninja.example';
+const SUFIXO_SENHA = '#TeclaNinja'; // o Firebase exige senhas com 6+ caracteres
+export const slug = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+export const chaveAluno = (primeiro, ultimo, codigo) => [slug(primeiro), slug(ultimo), slug(codigo)].join('.');
+const emailDe = chave => chave + '@' + DOMINIO_LOGIN;
+const erroAuth = code => Object.assign(new Error(code), { code });
+
+function usuarioDe(u) {
+  if (!u) return null;
+  const email = u.email || '';
+  if (email.endsWith('@' + DOMINIO_LOGIN)) return { uid: email.split('@')[0], email, nome: '', foto: '', aluno: true };
+  return { uid: u.uid, nome: u.displayName || email, email, foto: u.photoURL || '', aluno: false };
+}
+
+let pendente = null;
+/** Dados do cadastro que acabou de ser feito (usados para criar o perfil do aluno). */
+export const perfilPendente = uid => (pendente?.uid === uid ? pendente : null);
 
 /* --------------------------- Modo demonstração --------------------------- */
 const LS = {
@@ -31,35 +50,60 @@ const ouvintes = [];
 const notificar = () => ouvintes.forEach(f => f(LS.ler('auth', null)));
 function turmaDemo() {
   const t = LS.ler('turmas', {});
-  if (!t.DEMO) { t.DEMO = { codigo: 'DEMO', nome: 'Turma Demonstração', criadaEm: Date.now() }; LS.gravar('turmas', t); }
+  if (!t.DEMO) { t.DEMO = { codigo: 'DEMO', nome: '1º Ano A', escola: 'Escola Demonstração', criadaEm: Date.now() }; LS.gravar('turmas', t); }
 }
-const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
 
 /* ------------------------------- Login ------------------------------- */
 export async function observarLogin(cb) {
   if (MODO === 'demo') { turmaDemo(); ouvintes.push(cb); cb(LS.ler('auth', null)); return; }
   const { auth, Au } = await fb();
-  Au.onAuthStateChanged(auth, async u => {
-    if (u && DOMINIO_ALUNOS && !ehProfessor(u.email) && !u.email.toLowerCase().endsWith('@' + DOMINIO_ALUNOS.toLowerCase())) {
-      await Au.signOut(auth);
-      cb(null, `Use sua conta Google da escola (@${DOMINIO_ALUNOS}).`);
-      return;
-    }
-    cb(usuarioDe(u));
-  });
+  Au.onAuthStateChanged(auth, u => cb(usuarioDe(u)));
 }
 
-export async function entrarGoogle(restringirDominio = true) {
+/** Login do professor (conta Google). */
+export async function entrarGoogle() {
   const { auth, Au } = await fb();
   const p = new Au.GoogleAuthProvider();
-  p.setCustomParameters({ prompt: 'select_account', ...(restringirDominio && DOMINIO_ALUNOS ? { hd: DOMINIO_ALUNOS } : {}) });
+  p.setCustomParameters({ prompt: 'select_account' });
   await Au.signInWithPopup(auth, p);
 }
 
+/** Login do professor no modo demonstração. */
 export function entrarDemo(nome, email) {
-  LS.gravar('auth', { uid: 'demo-' + slug(email || nome), nome, email: email || slug(nome) + '@demo.local', foto: '' });
+  LS.gravar('auth', { uid: 'demo-' + slug(email || nome), nome, email: email || slug(nome) + '@demo.local', foto: '', aluno: false });
   notificar();
 }
+
+/** Primeiro acesso do aluno: cria a conta com nome, turma e senha. */
+export async function cadastrarAluno({ primeiro, ultimo, turma, senha }) {
+  const uid = chaveAluno(primeiro, ultimo, turma.codigo), email = emailDe(uid);
+  pendente = { uid, email, primeiro, ultimo, nome: `${primeiro} ${ultimo}`, escola: turma.escola || '', turma: turma.codigo, turmaNome: turma.nome };
+  if (MODO === 'demo') {
+    const c = LS.ler('contas', {});
+    if (c[uid]) throw erroAuth('auth/email-already-in-use');
+    c[uid] = senha; LS.gravar('contas', c);
+    LS.gravar('auth', { uid, email, aluno: true }); notificar();
+    return;
+  }
+  const { auth, Au } = await fb();
+  await Au.createUserWithEmailAndPassword(auth, email, senha + SUFIXO_SENHA);
+}
+
+/** Login do aluno com nome, turma e senha. */
+export async function entrarAluno({ primeiro, ultimo, codigo, senha }) {
+  const uid = chaveAluno(primeiro, ultimo, codigo), email = emailDe(uid);
+  if (MODO === 'demo') {
+    if (LS.ler('contas', {})[uid] !== senha) throw erroAuth('auth/invalid-credential');
+    LS.gravar('auth', { uid, email, aluno: true }); notificar();
+    return;
+  }
+  const { auth, Au } = await fb();
+  await Au.signInWithEmailAndPassword(auth, email, senha + SUFIXO_SENHA);
+}
+
+/** Só no modo demonstração: apaga a senha para o aluno cadastrar uma nova. */
+export function liberarNovaSenhaDemo(uid) { const c = LS.ler('contas', {}); delete c[uid]; LS.gravar('contas', c); }
+export function definirSenhaDemo(uid, senha) { const c = LS.ler('contas', {}); c[uid] = senha; LS.gravar('contas', c); }
 
 export async function sair() {
   if (MODO === 'demo') { LS.gravar('auth', null); notificar(); return; }
@@ -123,7 +167,7 @@ export async function listarTurmas() {
   if (MODO === 'demo') return Object.values(LS.ler('turmas', {}));
   const { db, F } = await fb();
   const r = await F.getDocs(F.collection(db, 'turmas'));
-  return r.docs.map(d => d.data()).sort((a, b) => a.nome.localeCompare(b.nome));
+  return r.docs.map(d => d.data());
 }
 
 export async function lerTurma(codigo) {
@@ -134,8 +178,8 @@ export async function lerTurma(codigo) {
   return s.exists() ? s.data() : null;
 }
 
-export async function criarTurma(nome) {
-  const t = { codigo: gerarCodigo(), nome, criadaEm: Date.now() };
+export async function criarTurma(nome, escola = '') {
+  const t = { codigo: gerarCodigo(), nome, escola, criadaEm: Date.now() };
   if (MODO === 'demo') { const ts = LS.ler('turmas', {}); ts[t.codigo] = t; LS.gravar('turmas', ts); return t; }
   const { db, F } = await fb();
   await F.setDoc(F.doc(db, 'turmas', t.codigo), t);

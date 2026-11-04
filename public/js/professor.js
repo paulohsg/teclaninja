@@ -1,5 +1,5 @@
 // Painel do professor: turmas, lista de alunos, detalhes e exportação.
-import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao } from './store.js';
+import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo } from './store.js';
 import { LICOES, MODULOS } from './licoes.js';
 import { JOGOS } from './jogos.js';
 import { criarTeclado, codeDe } from './teclado.js';
@@ -86,12 +86,16 @@ function render() {
   P.aba === 'turmas' ? abaTurmas() : abaAlunos();
 }
 
-const nomeTurma = cod => P.turmas.find(t => t.codigo === cod)?.nome || (cod ? cod : 'Sem turma');
+const turmaDe = cod => P.turmas.find(t => t.codigo === cod);
+const nomeTurma = cod => { const t = turmaDe(cod); return t ? t.nome : cod ? cod + ' (excluída)' : 'Sem turma'; };
+const escolaDaTurma = (cod, a) => turmaDe(cod)?.escola || a?.escola || '';
+const rotuloTurma = t => (t.escola ? t.escola + ' · ' : '') + t.nome;
+const ordenarTurmas = ts => [...ts].sort((x, y) => rotuloTurma(x).localeCompare(rotuloTurma(y), 'pt-BR', { numeric: true }));
 
 /* ================================ Alunos ================================ */
 function linhaDados(a) {
   return {
-    a, nome: a.nome || '', turma: nomeTurma(a.turma), licoes: licoesFeitas(a), estrelas: totalEstrelas(a),
+    a, nome: a.nome || '', turma: nomeTurma(a.turma), escola: escolaDaTurma(a.turma, a), licoes: licoesFeitas(a), estrelas: totalEstrelas(a),
     ppm: a.melhorPpm || 0, precisao: precisaoGeral(a), tempo: a.stats.tempo || 0, xp: a.xp || 0, acesso: a.ultimoAcesso || 0
   };
 }
@@ -107,7 +111,7 @@ function abaAlunos() {
   c.innerHTML = `
     <div class="cab-pg"><h1 class="titulo-pg">👩‍🎓 Acompanhamento dos alunos</h1></div>
     <div class="filtros">
-      <select id="f-turma"><option value="">Todas as turmas</option>${P.turmas.map(t => `<option value="${esc(t.codigo)}"${P.turma === t.codigo ? ' selected' : ''}>${esc(t.nome)}</option>`).join('')}</select>
+      <select id="f-turma"><option value="">Todas as turmas</option>${ordenarTurmas(P.turmas).map(t => `<option value="${esc(t.codigo)}"${P.turma === t.codigo ? ' selected' : ''}>${esc(rotuloTurma(t))}</option>`).join('')}</select>
       <input id="f-busca" type="search" placeholder="🔎 Buscar aluno..." value="${esc(P.busca)}">
       <span class="esp"></span>
       <button class="bt sec pequeno" id="bt-atualizar">↻ Atualizar</button>
@@ -152,7 +156,7 @@ function tabela(todas) {
       const nv = nivelDe(l.xp), dias = (Date.now() - l.acesso) / DIA, pct = l.licoes / LICOES.length;
       return `<tr data-uid="${esc(l.a.uid)}" tabindex="0">
         <td><div class="cel-aluno">${avatar(l.nome, l.a.foto)}<div><b>${esc(l.nome)}</b><small>${esc(l.a.email)}</small></div></div></td>
-        <td>${esc(l.turma)}</td>
+        <td>${esc(l.turma)}${l.escola ? `<small class="muted d-block">${esc(l.escola)}</small>` : ''}</td>
         <td><div class="cel-prog"><div class="barra"><i style="width:${pct * 100}%"></i></div><small>${l.licoes}/${LICOES.length}</small></div></td>
         <td>${l.estrelas}</td>
         <td><b>${l.ppm}</b></td>
@@ -170,10 +174,10 @@ function tabela(todas) {
 }
 
 function exportarCsv(linhas) {
-  const cab = ['Nome', 'E-mail', 'Turma', 'Lições concluídas', 'Total de lições', 'Estrelas', 'Melhor PPM', 'Precisão geral (%)', 'Tempo de prática (min)', 'XP', 'Nível', 'Último acesso',
+  const cab = ['Nome', 'Escola', 'Turma', 'Lições concluídas', 'Total de lições', 'Estrelas', 'Melhor PPM', 'Precisão geral (%)', 'Tempo de prática (min)', 'XP', 'Nível', 'Último acesso',
     ...LICOES.map((l, i) => `L${i + 1} estrelas`)];
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const corpo = linhas.map(l => [l.nome, l.a.email, l.turma, l.licoes, LICOES.length, l.estrelas, l.ppm, String(l.precisao).replace('.', ','), Math.round(l.tempo / 60), l.xp, nivelDe(l.xp).n,
+  const corpo = linhas.map(l => [l.nome, l.escola, l.turma, l.licoes, LICOES.length, l.estrelas, l.ppm, String(l.precisao).replace('.', ','), Math.round(l.tempo / 60), l.xp, nivelDe(l.xp).n,
     l.acesso ? new Date(l.acesso).toLocaleString('pt-BR') : '', ...LICOES.map(x => l.a.licoes[x.id]?.estrelas ?? '')].map(q).join(';'));
   const blob = new Blob(['﻿' + [cab.map(q).join(';'), ...corpo].join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -191,8 +195,15 @@ async function detalhe(uid) {
   try { sessoes = await lerSessoes(uid); } catch (e) { console.error(e); }
   const erros = Object.entries(a.stats.errosTecla || {}).map(([k, n]) => [decTecla(k), n]).sort((x, y) => y[1] - x[1]);
   m.el.innerHTML = `
-    <div class="det-cab">${avatar(a.nome, a.foto, 'g')}<div><h2>${esc(a.nome)}</h2><p class="muted">${esc(a.email)}</p></div>
-      <label class="det-turma">Turma <select id="d-turma"><option value="">Sem turma</option>${P.turmas.map(t => `<option value="${esc(t.codigo)}"${a.turma === t.codigo ? ' selected' : ''}>${esc(t.nome)}</option>`).join('')}</select></label></div>
+    <div class="det-cab">${avatar(a.nome, a.foto, 'g')}<div><h2>${esc(a.nome)}</h2><p class="muted">${esc(escolaDaTurma(a.turma, a))}${escolaDaTurma(a.turma, a) ? ' · ' : ''}${esc(nomeTurma(a.turma))}</p></div></div>
+    ${String(a.email || '').endsWith('@' + DOMINIO_LOGIN) ? `<details class="caixa-senha"><summary>🔑 O aluno esqueceu a senha?</summary>
+      ${MODO === 'demo' ? `<p>No modo demonstração, clique abaixo. O aluno faz o <b>Primeiro acesso</b> de novo, com o mesmo nome e turma, e cria outra senha. O progresso é mantido.</p><button class="bt sec pequeno" id="d-senha">Liberar nova senha</button>`
+      : `<ol>
+        <li>Abra o <a href="https://console.firebase.google.com/project/_/authentication/users" target="_blank" rel="noopener">console do Firebase → Authentication → Usuários</a>.</li>
+        <li>Na busca, cole o login do aluno: <code id="d-login">${esc(a.email)}</code> <button class="bt sec pequeno" id="d-copiar">📋 Copiar</button></li>
+        <li>Clique nos <b>três pontinhos (⋮)</b> da linha do aluno → <b>Excluir conta</b>.</li>
+        <li>Peça ao aluno para fazer o <b>Primeiro acesso</b> de novo, com o <b>mesmo nome, sobrenome e turma</b>, criando uma nova senha. O progresso dele é mantido.</li>
+      </ol>`}</details>` : ''}
     <section class="stats mini">
       ${stat('🥷', `Nv ${nv.n}`, nv.nome + ` · ${a.xp} XP`)}
       ${stat('📚', `${licoesFeitas(a)}/${LICOES.length}`, 'lições')}
@@ -228,12 +239,8 @@ async function detalhe(uid) {
     for (const [ch, n] of erros) { const cd = codeDe(ch); if (cd) mapa[cd] = (mapa[cd] || 0) + n; }
     criarTeclado($('#d-kb', m.el), { cores: false }).calor(mapa);
   }
-  $('#d-turma', m.el).onchange = async e => {
-    const t = P.turmas.find(x => x.codigo === e.target.value);
-    Object.assign(a, { turma: t?.codigo || '', turmaNome: t?.nome || '' });
-    try { await salvarAluno(a.uid, { turma: a.turma, turmaNome: a.turmaNome }); await salvarRanking(a.uid, dadosRanking(a)); toast('Turma atualizada.', 'ok'); abaAlunos(); }
-    catch (err) { toast('Erro: ' + esc(err.message), 'erro'); }
-  };
+  $('#d-copiar', m.el)?.addEventListener('click', () => { navigator.clipboard?.writeText(a.email).then(() => toast('Login copiado!', 'ok'), () => {}); });
+  $('#d-senha', m.el)?.addEventListener('click', () => { liberarNovaSenhaDemo(a.uid); toast('Pronto! O aluno já pode criar uma nova senha no Primeiro acesso.', 'ok'); });
   $('#d-excluir', m.el).onclick = async () => {
     if (!confirm(`Excluir ${a.nome} e todo o progresso? Esta ação não pode ser desfeita.`)) return;
     try { await excluirAluno(a.uid); P.alunos = P.alunos.filter(x => x.uid !== a.uid); m.fechar(); abaAlunos(); toast('Aluno excluído.'); }
@@ -282,28 +289,38 @@ function grafico(el, dados) {
 /* ================================ Turmas ================================ */
 function abaTurmas() {
   const c = $('#conteudo');
+  const escolas = [...new Set(P.turmas.map(t => t.escola).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'pt-BR'));
+  const grupos = escolas.concat(P.turmas.some(t => !t.escola) ? [''] : []);
   c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">🏫 Turmas</h1></div>
     <section class="card">
       <h3>Criar nova turma</h3>
-      <form id="f-nova" class="linha-form"><input name="nome" required maxlength="50" placeholder="Nome da turma (ex.: 1º Ano A – Manhã)"><button class="bt">+ Criar turma</button></form>
-      <p class="muted mini">Cada turma recebe um <b>código</b>. Os alunos digitam esse código no primeiro acesso.</p>
+      <form id="f-nova" class="linha-form">
+        <input name="escola" required maxlength="60" list="lista-escolas" placeholder="Escola (ex.: Colégio Estadual Machado de Assis)" value="${esc(escolas.length === 1 ? escolas[0] : '')}">
+        <datalist id="lista-escolas">${escolas.map(e => `<option value="${esc(e)}">`).join('')}</datalist>
+        <input name="nome" required maxlength="40" placeholder="Turma (ex.: 1º Ano A – Manhã)">
+        <button class="bt">+ Criar turma</button>
+      </form>
+      <p class="muted mini">No primeiro acesso, o aluno escolhe a <b>escola</b> e a <b>turma</b> numa lista, digita o primeiro nome e o último sobrenome e cria uma senha. Escreva o nome da escola sempre igual, para as turmas ficarem juntas na lista.</p>
     </section>
-    <div class="turmas-grid">${P.turmas.map(t => {
+    ${grupos.map(g => `<h2 class="secao">${g ? esc(g) : 'Sem escola'}</h2><div class="turmas-grid">${ordenarTurmas(P.turmas.filter(t => (t.escola || '') === g)).map(t => {
       const n = P.alunos.filter(a => a.turma === t.codigo).length;
-      return `<div class="card turma"><h3>${esc(t.nome)}</h3><div class="codigo-grande" title="Código da turma">${esc(t.codigo)}</div>
+      return `<div class="card turma"><h3>${esc(t.nome)}</h3>
         <p class="muted">${n} aluno(s) · criada em ${new Date(t.criadaEm).toLocaleDateString('pt-BR')}</p>
-        <div class="acoes"><button class="bt sec pequeno" data-copiar="${esc(t.codigo)}">📋 Copiar código</button><button class="bt sec pequeno" data-ver="${esc(t.codigo)}">👀 Ver alunos</button><button class="bt perigo pequeno" data-excluir="${esc(t.codigo)}">🗑</button></div></div>`;
-    }).join('') || '<p class="muted">Nenhuma turma criada ainda.</p>'}</div>`;
+        <div class="acoes"><button class="bt sec pequeno" data-ver="${esc(t.codigo)}">👀 Ver alunos</button><button class="bt perigo pequeno" data-excluir="${esc(t.codigo)}">🗑 Excluir</button></div></div>`;
+    }).join('')}</div>`).join('') || '<p class="muted">Nenhuma turma criada ainda. Crie a primeira acima para os alunos conseguirem entrar.</p>'}`;
   $('#f-nova').onsubmit = async e => {
     e.preventDefault();
-    const nome = new FormData(e.target).get('nome').trim();
-    try { const t = await criarTurma(nome); P.turmas.push(t); toast(`Turma criada! Código: <b>${t.codigo}</b>`, 'ok'); abaTurmas(); }
+    const f = new FormData(e.target);
+    const nome = f.get('nome').trim().replace(/\s+/g, ' '), escolaDigitada = f.get('escola').trim().replace(/\s+/g, ' ');
+    const escola = escolas.find(x => x.toLowerCase() === escolaDigitada.toLowerCase()) || escolaDigitada;
+    if (P.turmas.some(t => (t.escola || '').toLowerCase() === escola.toLowerCase() && t.nome.toLowerCase() === nome.toLowerCase())) { toast('Essa turma já existe nesta escola.', 'erro'); return; }
+    try { const t = await criarTurma(nome, escola); P.turmas = [...P.turmas.filter(x => x.codigo !== t.codigo), t]; toast(`Turma <b>${esc(t.nome)}</b> criada!`, 'ok'); abaTurmas(); }
     catch (err) { toast('Erro ao criar turma: ' + esc(err.message), 'erro'); }
   };
-  $$('[data-copiar]', c).forEach(b => b.onclick = () => { navigator.clipboard?.writeText(b.dataset.copiar); toast('Código copiado!', 'ok'); });
   $$('[data-ver]', c).forEach(b => b.onclick = () => { P.turma = b.dataset.ver; P.aba = 'alunos'; render(); });
   $$('[data-excluir]', c).forEach(b => b.onclick = async () => {
-    if (!confirm('Excluir esta turma? Os alunos continuam cadastrados, mas ficam sem turma.')) return;
+    const n = P.alunos.filter(a => a.turma === b.dataset.excluir).length;
+    if (!confirm(`Excluir esta turma?${n ? `\n\nAtenção: os ${n} aluno(s) desta turma não vão mais conseguir entrar, porque o login usa a turma. O progresso deles continua salvo.` : ''}`)) return;
     try { await excluirTurma(b.dataset.excluir); P.turmas = P.turmas.filter(t => t.codigo !== b.dataset.excluir); abaTurmas(); }
     catch (err) { toast('Erro: ' + esc(err.message), 'erro'); }
   });
@@ -312,12 +329,13 @@ function abaTurmas() {
 /* ======================= Dados de exemplo (só no demo) ======================= */
 async function gerarExemplo() {
   let t = P.turmas.find(x => x.codigo === 'DEMO');
-  if (!t) { t = await criarTurma('Turma Demonstração'); P.turmas.push(t); }
+  if (!t) { t = await criarTurma('1º Ano A', 'Escola Demonstração'); P.turmas = [...P.turmas.filter(x => x.codigo !== t.codigo), t]; }
   const nomes = ['Ana Beatriz Souza', 'Bruno Henrique Lima', 'Carla Mendes', 'Davi Oliveira', 'Eduarda Santos', 'Felipe Costa', 'Gabriela Rocha', 'Heitor Almeida', 'Isabela Ferreira', 'João Pedro Ribeiro', 'Larissa Gomes', 'Matheus Carvalho'];
   for (const [k, nome] of nomes.entries()) {
-    const uid = 'exemplo-' + k;
-    const a = novoAluno({ uid, nome, email: nome.split(' ')[0].toLowerCase() + k + '@aluno.demo' });
-    a.turma = t.codigo; a.turmaNome = t.nome;
+    const partes = nome.split(' '), primeiro = partes[0], ultimo = partes.at(-1);
+    const uid = chaveAluno(primeiro, ultimo, t.codigo);
+    const a = novoAluno({ uid, nome: `${primeiro} ${ultimo}`, primeiro, ultimo, email: uid + '@' + DOMINIO_LOGIN, escola: t.escola || '', turma: t.codigo, turmaNome: t.nome });
+    definirSenhaDemo(uid, '1234');
     const nLic = Math.floor(Math.random() * LICOES.length * 0.9) + 1;
     const base = 8 + Math.random() * 12, sessoes = [];
     let tempo = Date.now() - 30 * DIA;
