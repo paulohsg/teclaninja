@@ -209,3 +209,31 @@ export async function lerRanking(turma) {
   }
   return lista.sort((a, b) => b.xp - a.xp);
 }
+
+/* ------------------------- Liberar / pausar o curso ------------------------- */
+// Documento config/curso = { liberado: true | false }. Sem documento, o curso está liberado.
+const ouvintesCurso = [];
+
+/** Avisa (em tempo real) se o curso está liberado. Devolve uma função para parar de ouvir. */
+export async function observarCurso(cb) {
+  if (MODO === 'demo') {
+    const estado = () => LS.ler('curso', { liberado: true }).liberado !== false;
+    const h = e => { if (e.key === 'tn_demo_curso') cb(estado()); };
+    addEventListener('storage', h); ouvintesCurso.push(cb);
+    cb(estado());
+    return () => { removeEventListener('storage', h); const i = ouvintesCurso.indexOf(cb); if (i >= 0) ouvintesCurso.splice(i, 1); };
+  }
+  const { db, F } = await fb();
+  // Se as regras ainda não foram atualizadas e a leitura falhar, o curso segue liberado.
+  return F.onSnapshot(F.doc(db, 'config', 'curso'),
+    s => cb(s.exists() ? s.data().liberado !== false : true),
+    e => { console.warn('Não foi possível ler a liberação do curso:', e.code || e); cb(true); });
+}
+
+/** Professor liga ou desliga o curso para todos os alunos. */
+export async function definirCurso(liberado) {
+  const dados = { liberado: !!liberado, atualizadoEm: Date.now() };
+  if (MODO === 'demo') { LS.gravar('curso', dados); ouvintesCurso.forEach(f => f(dados.liberado)); return; }
+  const { db, F } = await fb();
+  await F.setDoc(F.doc(db, 'config', 'curso'), dados);
+}

@@ -1,5 +1,5 @@
 // Aplicativo do aluno.
-import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor } from './store.js';
+import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor, observarCurso } from './store.js';
 import { LICOES, MODULOS, FRASES, gerarExercicios, palavrasPara } from './licoes.js';
 import { criarTeclado, criarMaos, passos, codeDe } from './teclado.js';
 import { Motor } from './motor.js';
@@ -8,12 +8,12 @@ import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUIST
 import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd } from './ui.js';
 
 const app = $('#app');
-const S = { user: null, aluno: null, limpeza: null };
+const S = { user: null, aluno: null, limpeza: null, liberado: true, pararCurso: null };
 
 aplicarTema();
 addEventListener('hashchange', rotear);
 observarLogin(async user => {
-  if (!user) { S.user = S.aluno = null; return telaLogin(); }
+  if (!user) { S.pararCurso?.(); S.pararCurso = null; S.user = S.aluno = null; S.liberado = true; return telaLogin(); }
   // Contas Google são só para professores; alunos entram com nome, turma e senha.
   if (!user.aluno && !ehProfessor(user.email) && MODO === 'firebase') {
     await sair();
@@ -21,14 +21,20 @@ observarLogin(async user => {
   }
   S.user = user;
   try {
+    // O professor pode pausar o curso; professores nunca ficam bloqueados.
+    S.liberado = user.aluno ? await acompanharCurso() : true;
     let a = await lerAluno(user.uid);
+    const novo = !a;
     if (!a) a = novoAluno(perfilPendente(user.uid) || (user.aluno ? await perfilDaChave(user) : user));
     a = normalizar(a);
     if (!user.aluno) Object.assign(a, { nome: user.nome, email: user.email, foto: user.foto || a.foto });
     a.uid = user.uid; a.email = user.email; a.ultimoAcesso = Date.now();
     S.aluno = a;
-    await salvarAluno(user.uid, a);
-    if (a.turma) await salvarRanking(user.uid, dadosRanking(a));
+    // Com o curso pausado, o banco só aceita criar o perfil de quem acabou de se cadastrar.
+    if (novo || S.liberado) {
+      await salvarAluno(user.uid, a);
+      if (a.turma) await salvarRanking(user.uid, dadosRanking(a));
+    }
   } catch (e) {
     console.error(e);
     await sair().catch(() => {});
@@ -39,6 +45,22 @@ observarLogin(async user => {
   console.error(e);
   telaLogin('Não foi possível conectar ao servidor. Verifique a internet e recarregue a página.');
 });
+
+/** Liga o aviso em tempo real do professor. Resolve com o estado inicial (liberado ou não). */
+function acompanharCurso() {
+  S.pararCurso?.();
+  return new Promise(resolve => {
+    let primeiro = true;
+    observarCurso(lib => {
+      if (primeiro) { primeiro = false; resolve(lib); return; }
+      if (lib === S.liberado) return;
+      S.liberado = lib;
+      if (!S.aluno || !$('#conteudo')) return;
+      toast(lib ? '🎉 O professor liberou o curso. Bons estudos!' : '🔒 O professor pausou o curso.', lib ? 'ok' : '');
+      rotear();
+    }).then(parar => { S.pararCurso = parar; }).catch(e => { console.error(e); if (primeiro) { primeiro = false; resolve(true); } });
+  });
+}
 
 /** Reconstrói o perfil a partir do login (caso o cadastro tenha sido interrompido). */
 async function perfilDaChave(user) {
@@ -216,11 +238,29 @@ function rotear() {
   $$('.menu a').forEach(x => x.classList.toggle('ativo', x.dataset.r === (rota || 'inicio') || (rota === 'jogo' && x.dataset.r === 'jogos')));
   const c = $('#conteudo');
   c.className = ''; c.innerHTML = ''; scrollTo(0, 0);
+  if (!S.liberado) { $$('.menu a').forEach(x => x.classList.remove('ativo')); return telaPausa(c); }
   const telas = { licao: () => telaLicao(c, param), jogos: () => telaJogos(c), jogo: () => telaJogo(c, param), conquistas: () => telaConquistas(c), ranking: () => telaRanking(c), guia: () => telaGuia(c) };
   (telas[rota] || (() => telaInicio(c)))();
 }
 
+function telaPausa(c) {
+  const a = S.aluno, nv = nivelDe(a.xp);
+  c.innerHTML = `<div class="pagina"><section class="card pausa">
+    <div class="pausa-ic" aria-hidden="true">🔒</div>
+    <h1>O curso está pausado</h1>
+    <p class="muted">Seu professor pausou as lições e os jogos por enquanto. Eles voltam na próxima aula, e esta tela muda sozinha quando o curso for liberado.</p>
+    <div class="res-nums">
+      <div><b>${licoesFeitas(a)}/${LICOES.length}</b><small>lições</small></div>
+      <div><b>${nv.n}</b><small>nível · ${esc(nv.nome)}</small></div>
+      <div><b>${a.xp}</b><small>XP</small></div>
+      <div><b>${a.melhorPpm || 0}</b><small>melhor PPM</small></div>
+    </div>
+    <p class="mini">💡 Até lá: costas apoiadas, pulsos retos e olhos na tela!</p>
+  </section></div>`;
+}
+
 async function salvarTudo(sessao) {
+  if (!S.liberado) return;
   try {
     await salvarAluno(S.aluno.uid, S.aluno);
     await registrarSessao(S.aluno.uid, sessao);

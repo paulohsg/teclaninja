@@ -504,3 +504,19 @@ input:focus, select:focus { border-color: var(--primaria); box-shadow: 0 0 0 4px
 .linha-form input[name="escola"] { flex: 1.4; }
 @media (max-width: 420px) { .duas { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .login-card { order: -1; margin: 0 auto; } .login-hero h1 { font-size: 1.8rem; } .teclas-deco { display: none; } }
+
+/* ---------- Liberar / pausar o curso ---------- */
+.interruptor { display: inline-flex; align-items: center; gap: .55rem; padding: .35rem .8rem .35rem .4rem; border-radius: 999px; cursor: pointer; user-select: none;
+  background: color-mix(in srgb, var(--ok) 13%, var(--surface)); border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); font-weight: 700; font-size: .85rem; color: var(--ok); white-space: nowrap; }
+.interruptor.desligado { background: color-mix(in srgb, var(--erro) 12%, var(--surface)); border-color: color-mix(in srgb, var(--erro) 45%, transparent); color: var(--erro); }
+.interruptor input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.interruptor .trilho { position: relative; width: 44px; height: 24px; border-radius: 99px; background: var(--ok); transition: background .2s; flex: none; }
+.interruptor.desligado .trilho { background: var(--muted); }
+.interruptor .bolinha { position: absolute; top: 3px; left: 23px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: left .2s; }
+.interruptor.desligado .bolinha { left: 3px; }
+.interruptor input:focus-visible + .trilho { outline: 2px solid var(--primaria); outline-offset: 2px; }
+.interruptor input:disabled + .trilho { opacity: .6; }
+.pausa { text-align: center; max-width: 640px; margin: 2rem auto; }
+.pausa-ic { font-size: 4rem; line-height: 1; margin-bottom: .6rem; }
+@media (max-width: 600px) { .interruptor .sw-txt { display: none; } .interruptor { padding: .35rem; } }
+@media (max-width: 600px) { .logo > span:not(.logo-ic) { display: none; } .topo.prof .usuario.estatico { display: none; } .topo { flex-wrap: nowrap; } .topo .menu { min-width: 0; } }

@@ -23,15 +23,23 @@ service cloud.firestore {
         || request.auth.token.email == id + '@aluno.teclaninja.example');
     }
 
+    // O professor pode pausar o curso (botão no painel). Sem o documento, está liberado.
+    function cursoLiberado() {
+      let curso = /databases/$(database)/documents/config/curso;
+      return !exists(curso) || get(curso).data.liberado != false;
+    }
+
     // Progresso de cada aluno: só o próprio aluno e o professor leem.
+    // Com o curso pausado, o aluno não consegue salvar progresso (só criar o perfil no primeiro acesso).
     match /alunos/{uid} {
       allow read: if dono(uid) || professor();
-      allow create, update: if dono(uid) || professor();
+      allow create: if dono(uid) || professor();
+      allow update: if professor() || (dono(uid) && cursoLiberado());
       allow delete: if professor();
 
       match /sessoes/{id} {
         allow read: if dono(uid) || professor();
-        allow create: if dono(uid);
+        allow create: if dono(uid) && cursoLiberado();
         allow delete: if professor();
       }
     }
@@ -40,6 +48,12 @@ service cloud.firestore {
     match /ranking/{uid} {
       allow read: if logado();
       allow write: if dono(uid) || professor();
+    }
+
+    // Liberação do curso: todos leem; só o professor muda.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if professor();
     }
 
     // Turmas: a lista de escolas e turmas aparece na tela de login (antes de entrar).

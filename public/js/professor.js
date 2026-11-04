@@ -1,5 +1,5 @@
 // Painel do professor: turmas, lista de alunos, detalhes e exportação.
-import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo } from './store.js';
+import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo, observarCurso, definirCurso } from './store.js';
 import { LICOES, MODULOS } from './licoes.js';
 import { JOGOS } from './jogos.js';
 import { criarTeclado, codeDe } from './teclado.js';
@@ -7,7 +7,7 @@ import { nivelDe, CONQUISTAS, sequencia, decTecla, precisaoGeral, licoesFeitas, 
 import { $, $$, esc, toast, aplicarTema, alternarTema, fmtTempo, fmtData, avatar, modal, GOOGLE_SVG, hoje } from './ui.js';
 
 const app = $('#app');
-const P = { user: null, turmas: [], alunos: [], turma: '', busca: '', ordem: 'nome', dir: 1, aba: 'alunos' };
+const P = { user: null, turmas: [], alunos: [], turma: '', busca: '', ordem: 'nome', dir: 1, aba: 'alunos', pararCurso: null };
 const DIA = 864e5;
 
 aplicarTema();
@@ -56,6 +56,11 @@ function painel() {
       <a href="index.html"><span class="mi">⌨️</span><span class="mt">Ver curso</span></a>
     </nav>
     <div class="topo-dir">
+      <label class="interruptor" id="sw" title="Liga ou desliga as lições e os jogos para todos os alunos">
+        <input type="checkbox" id="sw-curso" role="switch" disabled>
+        <span class="trilho" aria-hidden="true"><span class="bolinha"></span></span>
+        <span class="sw-txt" id="sw-txt">Carregando…</span>
+      </label>
       <button class="ico" id="bt-tema" title="Tema claro/escuro">🌓</button>
       <span class="usuario estatico">${avatar(P.user.nome, P.user.foto)}<span class="u-info"><b>${esc(P.user.nome)}</b><small>${esc(P.user.email)}</small></span></span>
       <button class="ico" id="bt-sair" title="Sair">🚪</button>
@@ -65,7 +70,34 @@ function painel() {
   $('#bt-tema').onclick = alternarTema;
   $('#bt-sair').onclick = () => sair();
   $$('[data-aba]').forEach(a => a.onclick = e => { e.preventDefault(); P.aba = a.dataset.aba; render(); });
+  ligarInterruptor();
   carregar();
+}
+
+/** Botão liga/desliga do curso (vale para todos os alunos, em tempo real). */
+function ligarInterruptor() {
+  const sw = $('#sw-curso'), txt = $('#sw-txt'), caixa = $('#sw');
+  const mostrar = lib => {
+    sw.checked = lib; sw.disabled = false;
+    caixa.classList.toggle('desligado', !lib);
+    txt.textContent = lib ? 'Curso liberado' : 'Curso pausado';
+    sw.setAttribute('aria-label', lib ? 'Curso liberado. Clique para pausar' : 'Curso pausado. Clique para liberar');
+  };
+  P.pararCurso?.();
+  observarCurso(mostrar).then(f => { P.pararCurso = f; }).catch(e => console.error(e));
+  sw.onchange = async () => {
+    const lib = sw.checked;
+    sw.disabled = true;
+    try {
+      await definirCurso(lib);
+      mostrar(lib);
+      toast(lib ? '✅ Curso liberado para todos os alunos.' : '🔒 Curso pausado. Os alunos não conseguem fazer lições nem jogos até você liberar.', lib ? 'ok' : '');
+    } catch (err) {
+      console.error(err);
+      mostrar(!lib);
+      toast('Não foi possível mudar. Confira se as regras novas do <code>firestore.rules</code> foram publicadas no Firebase.', 'erro');
+    }
+  };
 }
 
 async function carregar() {

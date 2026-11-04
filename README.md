@@ -105,6 +105,12 @@ No final aparece o endereço do site, algo como `https://teclaninja-escola.web.a
 
 > Dois alunos com o mesmo primeiro nome e último sobrenome na mesma turma: o segundo pode usar o nome do meio no lugar do sobrenome.
 
+### Pausar o curso fora da aula
+No topo do painel do professor há um botão **liga/desliga** ("Curso liberado" / "Curso pausado"). Ele vale para **todos os alunos** e muda na hora:
+- **Pausado:** os alunos veem a tela "O curso está pausado" e não conseguem fazer lições nem jogos. Quem estiver no meio de uma lição é interrompido. Mesmo que alguém tente burlar pelo navegador, o banco de dados recusa salvar progresso.
+- **Liberado:** a tela dos alunos volta sozinha, sem precisar recarregar a página.
+- Com o curso pausado, alunos novos ainda conseguem fazer o primeiro acesso (só o cadastro).
+
 ### Quando um aluno esquece a senha
 1. No painel do professor, clique no aluno e abra **"O aluno esqueceu a senha?"**. Copie o login que aparece ali.
 2. No Firebase, vá em **Authentication → Usuários**, cole o login na busca, clique nos três pontinhos (⋮) → **Excluir conta**.
@@ -126,6 +132,7 @@ No final aparece o endereço do site, algo como `https://teclaninja-escola.web.a
 - **"Não foi possível carregar os dados" no painel:** o e-mail do professor não está nas regras do Firestore ou as regras não foram publicadas.
 - **Aluno vê "O login por senha ainda não foi ativado":** falta ativar o provedor **E-mail/senha** (Parte 3).
 - **A lista de escolas aparece vazia ou com erro:** crie uma turma no painel e confira se as regras do `firestore.rules` foram publicadas (Parte 4).
+- **O botão liga/desliga mostra erro:** as regras novas do `firestore.rules` não foram publicadas (Parte 4).
 - **Excluir uma turma:** os alunos dela deixam de conseguir entrar, porque o login usa a turma. O progresso continua salvo.
 - **Popup de login do professor não abre:** permita popups para o site no navegador.
 
