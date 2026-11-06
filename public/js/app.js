@@ -1,19 +1,23 @@
 // Aplicativo do aluno.
-import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor, observarCurso } from './store.js';
+import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor, observarCurso, observarAluno, salvarFoto } from './store.js';
 import { LICOES, MODULOS, FRASES, gerarExercicios, palavrasPara } from './licoes.js';
 import { criarTeclado, criarMaos, passos, codeDe } from './teclado.js';
 import { Motor } from './motor.js';
 import { JOGOS, iniciarJogo } from './jogos.js';
 import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUISTAS, sequencia, teclasAprendidas, licaoLiberada, meta3, decTecla, dadosRanking, precisaoGeral, licoesFeitas, totalEstrelas } from './progresso.js';
-import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd } from './ui.js';
+import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd, modal, reduzirImagem } from './ui.js';
 
 const app = $('#app');
-const S = { user: null, aluno: null, limpeza: null, liberado: true, pararCurso: null };
+const S = { user: null, aluno: null, limpeza: null, liberado: true, fotosLiberadas: true, pararCurso: null, pararAluno: null };
 
 aplicarTema();
 addEventListener('hashchange', rotear);
 observarLogin(async user => {
-  if (!user) { S.pararCurso?.(); S.pararCurso = null; S.user = S.aluno = null; S.liberado = true; return telaLogin(); }
+  if (!user) {
+    S.pararCurso?.(); S.pararAluno?.(); S.pararCurso = S.pararAluno = null;
+    S.user = S.aluno = null; S.liberado = true;
+    return telaLogin();
+  }
   // Contas Google são só para professores; alunos entram com nome, turma e senha.
   if (!user.aluno && !ehProfessor(user.email) && MODO === 'firebase') {
     await sair();
@@ -32,13 +36,22 @@ observarLogin(async user => {
     S.aluno = a;
     // Com o curso pausado, o banco só aceita criar o perfil de quem acabou de se cadastrar.
     if (novo || S.liberado) {
-      await salvarAluno(user.uid, a);
-      if (a.turma) await salvarRanking(user.uid, dadosRanking(a));
+      await salvarAluno(user.uid, novo || !user.aluno ? a : semFoto(a));
+      if (a.turma) await salvarRanking(user.uid, dadosRanking(a)).catch(e => console.warn('ranking:', e.code || e));
     }
   } catch (e) {
     console.error(e);
     await sair().catch(() => {});
     return telaLogin('Não foi possível carregar seus dados. Verifique a internet e tente de novo.');
+  }
+  if (user.aluno) {
+    S.pararAluno?.();
+    // Se o professor trocar ou bloquear a foto, a mudança chega na hora.
+    observarAluno(user.uid, d => {
+      if (!S.aluno || (d.foto || '') === S.aluno.foto && !!d.fotoBloqueada === !!S.aluno.fotoBloqueada) return;
+      S.aluno.foto = d.foto || ''; S.aluno.fotoBloqueada = !!d.fotoBloqueada;
+      atualizarTopo();
+    }).then(f => { S.pararAluno = f; }).catch(e => console.warn(e));
   }
   montarShell(); rotear();
 }).catch(e => {
@@ -51,7 +64,8 @@ function acompanharCurso() {
   S.pararCurso?.();
   return new Promise(resolve => {
     let primeiro = true;
-    observarCurso(lib => {
+    observarCurso((lib, dados = {}) => {
+      S.fotosLiberadas = dados.fotosLiberadas !== false;
       if (primeiro) { primeiro = false; resolve(lib); return; }
       if (lib === S.liberado) return;
       S.liberado = lib;
@@ -61,6 +75,9 @@ function acompanharCurso() {
     }).then(parar => { S.pararCurso = parar; }).catch(e => { console.error(e); if (primeiro) { primeiro = false; resolve(true); } });
   });
 }
+
+/** O aluno nunca grava a foto junto com o progresso (assim não desfaz uma troca feita pelo professor). */
+function semFoto(a) { const { foto, fotoBloqueada, ...resto } = a; return resto; }
 
 /** Reconstrói o perfil a partir do login (caso o cadastro tenha sido interrompido). */
 async function perfilDaChave(user) {
@@ -221,11 +238,57 @@ function menuUsuario(e) {
   m.className = 'menu-user';
   m.innerHTML = `<div class="mu-cab">${avatar(a.nome, a.foto, 'g')}<div><b>${esc(a.nome)}</b>${a.escola ? `<small>${esc(a.escola)}</small>` : ''}${a.turmaNome ? `<small>Turma: ${esc(a.turmaNome)}</small>` : ''}${S.user?.aluno ? '' : `<small>${esc(a.email)}</small>`}</div></div>
     ${ehProfessor(a.email) ? '<a href="professor.html">👩‍🏫 Painel do professor</a>' : ''}
+    ${S.user?.aluno ? '<button id="mu-foto">📷 Trocar foto</button>' : ''}
     <button id="mu-sair">🚪 Sair</button>`;
   document.body.append(m);
   const fechar = () => { m.remove(); removeEventListener('click', fechar); };
   setTimeout(() => addEventListener('click', fechar));
   $('#mu-sair', m).onclick = () => sair();
+  $('#mu-foto', m)?.addEventListener('click', () => { fechar(); trocarFoto(); });
+}
+
+/* ============================== Foto de perfil ============================== */
+function trocarFoto() {
+  const a = S.aluno;
+  const bloqueio = a.fotoBloqueada ? 'Seu professor bloqueou a troca da sua foto.'
+    : !S.fotosLiberadas ? 'A troca de fotos está desligada pelo professor no momento.'
+    : !S.liberado ? 'O curso está pausado. Troque a foto durante a aula.' : '';
+  const m = modal(`<div class="foto-modal">
+    <h2>📷 Sua foto de perfil</h2>
+    <div class="foto-previa" id="fp">${avatar(a.nome, a.foto, 'xg')}</div>
+    ${bloqueio ? `<p class="aviso">🔒 ${bloqueio}</p>` : `
+      <p class="muted">Escolha uma imagem. Ela aparece para a sua turma no ranking. Use uma imagem adequada para a escola: o professor pode trocar ou remover a qualquer momento.</p>
+      <div class="acoes">
+        <label class="bt sec">📁 Escolher imagem<input type="file" id="fp-arq" accept="image/*" hidden></label>
+        <button class="bt" id="fp-salvar" disabled>Salvar foto</button>
+        ${a.foto ? '<button class="bt perigo" id="fp-remover">Remover foto</button>' : ''}
+      </div>
+      <p class="erro-msg" id="fp-msg"></p>`}
+  </div>`);
+  let nova = null;
+  const msg = t => { const el = $('#fp-msg', m.el); if (el) el.textContent = t; };
+  $('#fp-arq', m.el)?.addEventListener('change', async e => {
+    msg('');
+    try {
+      nova = await reduzirImagem(e.target.files[0]);
+      $('#fp', m.el).innerHTML = avatar(a.nome, nova, 'xg');
+      $('#fp-salvar', m.el).disabled = false;
+    } catch (err) { msg(err.message); }
+  });
+  const gravarFoto = async (foto, bt) => {
+    bt.disabled = true; msg('');
+    try {
+      await salvarFoto(a.uid, foto);
+      a.foto = foto; atualizarTopo(); m.fechar();
+      toast(foto ? 'Foto atualizada! 📸' : 'Foto removida.', 'ok');
+      if (location.hash.startsWith('#/ranking')) rotear();
+    } catch (err) {
+      console.error(err); bt.disabled = false;
+      msg(err?.code === 'permission-denied' ? 'Não foi possível trocar a foto agora (o professor pode ter bloqueado).' : 'Não foi possível salvar. Verifique a internet.');
+    }
+  };
+  $('#fp-salvar', m.el)?.addEventListener('click', e => gravarFoto(nova, e.currentTarget));
+  $('#fp-remover', m.el)?.addEventListener('click', e => gravarFoto('', e.currentTarget));
 }
 
 function limpar() { if (S.limpeza) { try { S.limpeza(); } catch { /* ok */ } S.limpeza = null; } }
@@ -262,9 +325,9 @@ function telaPausa(c) {
 async function salvarTudo(sessao) {
   if (!S.liberado) return;
   try {
-    await salvarAluno(S.aluno.uid, S.aluno);
+    await salvarAluno(S.aluno.uid, semFoto(S.aluno));
     await registrarSessao(S.aluno.uid, sessao);
-    if (S.aluno.turma) await salvarRanking(S.aluno.uid, dadosRanking(S.aluno));
+    if (S.aluno.turma) await salvarRanking(S.aluno.uid, dadosRanking(S.aluno)).catch(e => console.warn('ranking:', e.code || e));
   } catch (e) {
     console.error(e);
     toast('⚠️ Não foi possível salvar o progresso. Verifique sua internet.', 'erro');
@@ -293,7 +356,7 @@ const estrelasHtml = (n, max = 3) => `<span class="estrelas">${Array.from({ leng
 function telaInicio(c) {
   const a = S.aluno, nv = nivelDe(a.xp);
   const feitas = licoesFeitas(a), total = LICOES.length;
-  const prox = LICOES.find((l, i) => !a.licoes[l.id]?.concluida && licaoLiberada(a, i)) || LICOES.at(-1);
+  const prox = LICOES.find((l, i) => !a.licoes[l.id]?.concluida && liberada(i)) || LICOES.at(-1);
   const seq = sequencia(a.dias);
   c.innerHTML = `
   <section class="hero">
@@ -331,17 +394,21 @@ function moduloHtml(m) {
   return `<div class="modulo${feitas === lics.length ? ' completo' : ''}">
     <div class="mod-cab"><span class="mod-ic">${m.icone}</span><div><h3>${m.nome}</h3><p>${m.desc}</p></div><span class="mod-prog">${feitas}/${lics.length}</span></div>
     <div class="licoes">${lics.map(({ l, i }) => {
-      const p = a.licoes[l.id], lib = licaoLiberada(a, i);
+      const p = a.licoes[l.id], lib = liberada(i);
       const cls = p?.concluida ? 'feita' : lib ? 'livre' : 'bloq';
       return `<a class="licao ${cls}" href="#/licao/${l.id}"><span class="lnum">${lib ? i + 1 : '🔒'}</span><span class="ltit">${esc(l.titulo)}</span>${estrelasHtml(p?.estrelas || 0)}</a>`;
     }).join('')}</div></div>`;
 }
 
+/** Professores têm o curso todo liberado para praticar. */
+const liberada = idx => !S.user?.aluno || licaoLiberada(S.aluno, idx);
+const letrasJogos = () => (S.user?.aluno ? teclasAprendidas(S.aluno) : "abcdefghijklmnopqrstuvwxyzç");
+
 /* ================================ Lição ================================ */
 function telaLicao(c, id) {
   const idx = LICOES.findIndex(l => l.id === id), lic = LICOES[idx];
   if (!lic) { location.hash = '#/inicio'; return; }
-  if (!licaoLiberada(S.aluno, idx)) { toast('🔒 Conclua as lições anteriores primeiro.'); location.hash = '#/inicio'; return; }
+  if (!liberada(idx)) { toast('🔒 Conclua as lições anteriores primeiro.'); location.hash = '#/inicio'; return; }
   const mod = MODULOS.find(m => m.id === lic.modulo);
   let exercicios = gerarExercicios(lic), i = 0, motor = null, kd = null, total;
   const zerar = () => { total = { acertos: 0, erros: 0, seg: 0, errosTecla: {} }; i = 0; };
@@ -395,6 +462,7 @@ function telaLicao(c, id) {
         <label class="chk"><input type="checkbox" id="ocultar"${ocultar ? ' checked' : ''}> 🥷 Modo ninja: esconder teclado</label>
         <button class="bt sec pequeno" id="reiniciar">↺ Reiniciar exercício</button>
       </div></div>`;
+    scrollTo({ top: 0 });
     $('#ocultar', c).onchange = e => { gravar('tn_ocultar_kb', e.target.checked ? '1' : '0'); $('#kbw', c).classList.toggle('oculto', e.target.checked); e.target.blur(); };
     $('#reiniciar', c).onclick = e => { e.currentTarget.blur(); exercicio(); };
     motor = new Motor({
@@ -419,6 +487,7 @@ function telaLicao(c, id) {
     const prox = LICOES[idx + 1];
     const passou = out.estrelas > 0;
     const piores = Object.entries(r.errosTecla).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    scrollTo({ top: 0 });
     c.innerHTML = `<div class="pagina"><section class="card resultado ${passou ? 'ok' : 'nao'}">
       <div class="res-estrelas">${[0, 1, 2].map(k => `<i class="${k < out.estrelas ? 'on' : ''}" style="--d:${k * 0.25}s">★</i>`).join('')}</div>
       <h1>${passou ? ['', 'Lição concluída!', 'Muito bem!', 'Perfeito, ninja! 🥷'][out.estrelas] : 'Quase lá!'}</h1>
@@ -501,7 +570,7 @@ function telaGuia(c) {
 
 /* ================================ Jogos ================================ */
 function telaJogos(c) {
-  const a = S.aluno, letras = teclasAprendidas(a);
+  const a = S.aluno, letras = letrasJogos();
   c.innerHTML = `<div class="pagina">
     <h1 class="titulo-pg">🎮 Jogos</h1>
     <p class="muted">Os jogos usam as letras que você já aprendeu nas lições (<span class="mono">${esc(letras.toUpperCase())}</span>). Quanto mais lições, mais desafios!</p>
@@ -536,7 +605,7 @@ function telaJogo(c, id) {
   function jogar() {
     tirarKd(); inst?.destruir();
     area.innerHTML = '<div class="jogo-palco" id="jp"></div>';
-    const letras = teclasAprendidas(S.aluno);
+    const letras = letrasJogos();
     inst = iniciarJogo(j.id, $('#jp', area), { letras, palavras: palavrasPara(letras), frases: FRASES, onFim: fim });
   }
 
@@ -587,7 +656,7 @@ async function telaRanking(c) {
   c.innerHTML = `<div class="pagina"><h1 class="titulo-pg">🏆 Ranking ${a.turmaNome ? `<small>${esc(a.turmaNome)}</small>` : ''}</h1><div id="rk" class="card"><div class="spinner"></div></div></div>`;
   if (!a.turma) { $('#rk', c).innerHTML = '<p class="muted">Entre em uma turma para ver o ranking.</p>'; return; }
   try {
-    await salvarRanking(a.uid, dadosRanking(a));
+    await salvarRanking(a.uid, dadosRanking(a)).catch(e => console.warn("ranking:", e.code || e));
     const lista = await lerRanking(a.turma);
     if (!$('#rk', c)) return;
     $('#rk', c).innerHTML = `<ol class="ranking">${lista.map((r, i) => `<li class="${r.uid === a.uid ? 'eu' : ''}">

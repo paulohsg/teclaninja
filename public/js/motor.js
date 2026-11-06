@@ -1,6 +1,7 @@
 // Motor de digitação: mostra o texto, confere cada tecla e mede PPM e precisão.
 import { passos, shiftPara, dedoDe, DEDOS } from './teclado.js';
 import { som, esc } from './ui.js';
+import { ouvirDigitacao } from './entrada.js';
 
 const nomeDedo = d => `<span class="dot" data-dedo="${d}"></span><b>${DEDOS[d]?.nome || ''}</b>`;
 
@@ -30,8 +31,7 @@ export class Motor {
     this.pos = 0; this.acertos = 0; this.erros = 0; this.errosTecla = {};
     this.inicio = 0; this.fimT = 0; this.mortaOk = false; this.ativo = true;
     this.render();
-    this._kd = e => this.tecla(e);
-    window.addEventListener('keydown', this._kd);
+    this._parar = ouvirDigitacao({ onTexto: (t, code) => this.receber(t, code), onDead: (code, shift) => this.acento(code, shift) });
     this.atualizar();
   }
 
@@ -69,23 +69,26 @@ export class Motor {
     this.onProgresso?.(this.stats());
   }
 
-  tecla(e) {
-    if (!this.ativo || e.ctrlKey || e.metaKey) return;
-    if (e.altKey && !e.getModifierState?.('AltGraph')) return;
-    const esperado = this.chars[this.pos];
-    const ps = passos(esperado);
-    if (e.key === 'Dead') {
-      if (!this.inicio) this.inicio = performance.now();
-      if (ps.length === 2 && !this.mortaOk && e.code === ps[0].code && e.shiftKey === !!ps[0].shift) {
-        this.mortaOk = true; this.teclado?.flash(e.code, true); som.tecla(); this.atualizar();
-      } else { this.mortaOk = false; this.errar(e.code, esperado); }
-      return;
-    }
-    if (e.key.length !== 1) return;
-    e.preventDefault();
+  /** O aluno apertou uma tecla de acento (o sistema espera a vogal). */
+  acento(code, shift) {
+    if (!this.ativo) return;
     if (!this.inicio) this.inicio = performance.now();
-    if (e.key === esperado) this.acertar(e.code);
-    else { this.mortaOk = false; this.errar(e.code, esperado); }
+    const ps = passos(this.chars[this.pos]);
+    if (ps.length === 2 && !this.mortaOk && code === ps[0].code && shift === !!ps[0].shift) {
+      this.mortaOk = true; this.teclado?.flash(code, true); som.tecla(); this.atualizar();
+    }
+    // Acento errado: o erro é contado quando o caractere composto chegar.
+  }
+
+  /** Texto que entrou (normalmente um caractere por tecla). */
+  receber(texto, code) {
+    if (!this.ativo) return;
+    if (!this.inicio) this.inicio = performance.now();
+    for (const ch of texto) {
+      const esperado = this.chars[this.pos];
+      if (ch === esperado) { this.acertar(code); if (!this.ativo) return; }
+      else { this.mortaOk = false; this.errar(code, esperado); return; } // um erro por tecla
+    }
   }
 
   acertar(code) {
@@ -128,5 +131,5 @@ export class Motor {
   /** Interrompe (ex.: fim do tempo) e devolve as estatísticas. */
   parar(fimT) { if (!this.fimT) this.fimT = fimT || performance.now(); this.destruir(); return this.stats(); }
 
-  destruir() { this.ativo = false; window.removeEventListener('keydown', this._kd); }
+  destruir() { this.ativo = false; this._parar?.(); }
 }

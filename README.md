@@ -111,6 +111,17 @@ No topo do painel do professor há um botão **liga/desliga** ("Curso liberado" 
 - **Liberado:** a tela dos alunos volta sozinha, sem precisar recarregar a página.
 - Com o curso pausado, alunos novos ainda conseguem fazer o primeiro acesso (só o cadastro).
 
+### Fotos de perfil
+- O aluno troca a própria foto pelo menu do nome (canto superior direito) → **📷 Trocar foto**. A imagem é reduzida para uma miniatura e aparece no topo e no ranking da turma.
+- No painel, a aba **📷 Fotos** mostra as fotos de todos os alunos. Ali você pode:
+  - **Trocar** ou **Remover** a foto de qualquer aluno (a mudança aparece para ele na hora);
+  - **Bloquear troca** de um aluno específico;
+  - desligar a troca de fotos para **todos** com o botão do topo da aba.
+- As regras do banco garantem isso: com bloqueio, o aluno não consegue trocar a foto nem pelo navegador.
+
+### Professor praticando
+Entrando no curso (`index.html`) com a sua conta Google de professor, todas as lições e todas as letras dos jogos ficam liberadas, e o botão de pausa não bloqueia você.
+
 ### Quando um aluno esquece a senha
 1. No painel do professor, clique no aluno e abra **"O aluno esqueceu a senha?"**. Copie o login que aparece ali.
 2. No Firebase, vá em **Authentication → Usuários**, cole o login na busca, clique nos três pontinhos (⋮) → **Excluir conta**.
@@ -128,6 +139,7 @@ No topo do painel do professor há um botão **liga/desliga** ("Curso liberado" 
 ## Dicas e problemas comuns
 
 - **Teclado:** os alunos precisam estar com o layout **Português (Brasil ABNT2)** no sistema. Senão o Ç e os acentos não funcionam.
+- **Chromebook:** em *Configurações → Dispositivo → Teclado e entradas → Métodos de entrada*, deixe **Português (Brasil)** como método ativo. Os acentos funcionam normalmente (´ + a = á). A tecla de "Caps Lock" do teclado na tela corresponde à tecla de pesquisa/iniciador do Chromebook.
 - **Celular/tablet:** o curso foi feito para teclado físico.
 - **"Não foi possível carregar os dados" no painel:** o e-mail do professor não está nas regras do Firestore ou as regras não foram publicadas.
 - **Aluno vê "O login por senha ainda não foi ativado":** falta ativar o provedor **E-mail/senha** (Parte 3).

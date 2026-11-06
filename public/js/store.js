@@ -211,29 +211,64 @@ export async function lerRanking(turma) {
 }
 
 /* ------------------------- Liberar / pausar o curso ------------------------- */
-// Documento config/curso = { liberado: true | false }. Sem documento, o curso está liberado.
+// Documento config/curso = { liberado, fotosLiberadas }. Sem documento (ou sem o campo), vale "liberado".
 const ouvintesCurso = [];
 
-/** Avisa (em tempo real) se o curso está liberado. Devolve uma função para parar de ouvir. */
+/** Avisa em tempo real se o curso está liberado: cb(liberado, dados). Devolve uma função para parar de ouvir. */
 export async function observarCurso(cb) {
   if (MODO === 'demo') {
-    const estado = () => LS.ler('curso', { liberado: true }).liberado !== false;
-    const h = e => { if (e.key === 'tn_demo_curso') cb(estado()); };
-    addEventListener('storage', h); ouvintesCurso.push(cb);
-    cb(estado());
-    return () => { removeEventListener('storage', h); const i = ouvintesCurso.indexOf(cb); if (i >= 0) ouvintesCurso.splice(i, 1); };
+    const avisar = () => { const d = LS.ler('curso', {}); cb(d.liberado !== false, d); };
+    const h = e => { if (e.key === 'tn_demo_curso') avisar(); };
+    addEventListener('storage', h); ouvintesCurso.push(avisar);
+    avisar();
+    return () => { removeEventListener('storage', h); const i = ouvintesCurso.indexOf(avisar); if (i >= 0) ouvintesCurso.splice(i, 1); };
   }
   const { db, F } = await fb();
   // Se as regras ainda não foram atualizadas e a leitura falhar, o curso segue liberado.
   return F.onSnapshot(F.doc(db, 'config', 'curso'),
-    s => cb(s.exists() ? s.data().liberado !== false : true),
-    e => { console.warn('Não foi possível ler a liberação do curso:', e.code || e); cb(true); });
+    s => { const d = s.exists() ? s.data() : {}; cb(d.liberado !== false, d); },
+    e => { console.warn('Não foi possível ler a liberação do curso:', e.code || e); cb(true, {}); });
+}
+
+async function gravarConfig(dados) {
+  dados = { ...dados, atualizadoEm: Date.now() };
+  if (MODO === 'demo') { LS.gravar('curso', { ...LS.ler('curso', {}), ...dados }); ouvintesCurso.forEach(f => f()); return; }
+  const { db, F } = await fb();
+  await F.setDoc(F.doc(db, 'config', 'curso'), dados, { merge: true });
 }
 
 /** Professor liga ou desliga o curso para todos os alunos. */
-export async function definirCurso(liberado) {
-  const dados = { liberado: !!liberado, atualizadoEm: Date.now() };
-  if (MODO === 'demo') { LS.gravar('curso', dados); ouvintesCurso.forEach(f => f(dados.liberado)); return; }
+export const definirCurso = liberado => gravarConfig({ liberado: !!liberado });
+
+/** Professor permite ou não que os alunos troquem a própria foto. */
+export const definirFotos = liberadas => gravarConfig({ fotosLiberadas: !!liberadas });
+
+/* ------------------------------- Fotos ------------------------------- */
+/** Troca (ou remove, com foto = '') a foto do aluno. Usado pelo aluno e pelo professor. */
+export async function salvarFoto(uid, foto) {
+  if (MODO === 'demo') {
+    for (const k of ['alunos', 'ranking']) { const t = LS.ler(k, {}); if (t[uid]) { t[uid].foto = foto; LS.gravar(k, t); } }
+    return;
+  }
   const { db, F } = await fb();
-  await F.setDoc(F.doc(db, 'config', 'curso'), dados);
+  await F.setDoc(F.doc(db, 'alunos', uid), { foto }, { merge: true });
+  await F.updateDoc(F.doc(db, 'ranking', uid), { foto }).catch(e => console.warn('ranking:', e.code || e));
+}
+
+/** Professor impede (ou volta a permitir) que um aluno troque a foto. */
+export async function bloquearFoto(uid, bloqueada) {
+  if (MODO === 'demo') { const t = LS.ler('alunos', {}); if (t[uid]) { t[uid].fotoBloqueada = !!bloqueada; LS.gravar('alunos', t); } return; }
+  const { db, F } = await fb();
+  await F.setDoc(F.doc(db, 'alunos', uid), { fotoBloqueada: !!bloqueada }, { merge: true });
+}
+
+/** Avisa quando o documento do aluno muda (ex.: o professor trocou a foto). */
+export async function observarAluno(uid, cb) {
+  if (MODO === 'demo') {
+    const h = e => { if (e.key === 'tn_demo_alunos') { const a = LS.ler('alunos', {})[uid]; if (a) cb(a); } };
+    addEventListener('storage', h);
+    return () => removeEventListener('storage', h);
+  }
+  const { db, F } = await fb();
+  return F.onSnapshot(F.doc(db, 'alunos', uid), d => { if (d.exists()) cb(d.data()); }, e => console.warn('aluno:', e.code || e));
 }

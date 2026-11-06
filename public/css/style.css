@@ -5,6 +5,7 @@
   --ok: #16a34a; --erro: #e11d48; --aviso: #d97706; --ouro: #f59e0b;
   --tecla: #ffffff; --tecla-borda: #d9d5ea; --tecla-sombra: #c9c4e0;
   --pele: #f3d3bd; --pele-borda: #d9ab8c;
+  --mao: #ece8f7; --mao-borda: #a59cc9; --mao-luz: rgba(255, 255, 255, .7);
   --d5: #ec4899; --d4: #f59e0b; --d3: #22c55e; --d2e: #3b82f6; --d2d: #8b5cf6; --dp: #94a3b8;
   --sombra: 0 1px 2px rgba(28, 26, 46, .05), 0 8px 24px -8px rgba(76, 52, 160, .18);
   --raio: 18px; --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -17,6 +18,7 @@
     --ok: #4ade80; --erro: #fb7185; --aviso: #fbbf24;
     --tecla: #2a2541; --tecla-borda: #3a3458; --tecla-sombra: #120f20;
     --pele: #c9a184; --pele-borda: #8e6a52;
+    --mao: #322c4d; --mao-borda: #6b62a0; --mao-luz: rgba(255, 255, 255, .08);
     --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px -10px rgba(0, 0, 0, .6);
     color-scheme: dark;
   }
@@ -27,6 +29,7 @@
   --ok: #4ade80; --erro: #fb7185; --aviso: #fbbf24;
   --tecla: #2a2541; --tecla-borda: #3a3458; --tecla-sombra: #120f20;
   --pele: #c9a184; --pele-borda: #8e6a52;
+  --mao: #322c4d; --mao-borda: #6b62a0; --mao-luz: rgba(255, 255, 255, .08);
   --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px -10px rgba(0, 0, 0, .6);
   color-scheme: dark;
 }
@@ -302,11 +305,15 @@ input:focus, select:focus { border-color: var(--primaria); box-shadow: 0 0 0 4px
 .teclado.sem-cores .tc { background: var(--tecla); border-color: var(--tecla-borda); border-bottom-color: var(--tecla-sombra); }
 .teclado .tc.quente { background: color-mix(in srgb, var(--erro) calc(var(--calor) * 85%), var(--tecla)); }
 .teclado.sem-rotulos .tc:not(.esp) > span { visibility: hidden; }
-.maos { max-width: 420px; width: 70%; margin: 0 auto; }
-.maos svg { display: block; width: 100%; height: auto; }
-.maos .palma { fill: var(--pele); stroke: var(--pele-borda); stroke-width: 2; }
-.maos .dedo { fill: var(--pele); stroke: var(--pele-borda); stroke-width: 2; transition: fill .12s; }
-.maos .dedo.ativo { fill: var(--fc); stroke: var(--fc); filter: drop-shadow(0 0 6px var(--fc)); }
+.maos { max-width: 400px; width: 70%; margin: 0 auto; }
+.maos svg { display: block; width: 100%; height: auto; overflow: visible; }
+.maos .contorno path { fill: var(--mao-borda); stroke: var(--mao-borda); stroke-width: 5; stroke-linejoin: round; }
+.maos .pele path { fill: var(--mao); }
+.maos .palma-luz { fill: none; stroke: var(--mao-luz); stroke-width: 10; stroke-linecap: round; }
+.maos .dedo { fill: transparent; transition: fill .12s; }
+.maos .dedo.ativo { fill: var(--fc); filter: drop-shadow(0 0 7px var(--fc)); }
+.maos .unha { fill: var(--fc); opacity: .55; transition: opacity .12s, fill .12s; }
+.maos .unha.ativo { fill: #fff; opacity: .9; }
 
 /* ---------- Jogos ---------- */
 .jogos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
@@ -520,3 +527,33 @@ input:focus, select:focus { border-color: var(--primaria); box-shadow: 0 0 0 4px
 .pausa-ic { font-size: 4rem; line-height: 1; margin-bottom: .6rem; }
 @media (max-width: 600px) { .interruptor .sw-txt { display: none; } .interruptor { padding: .35rem; } }
 @media (max-width: 600px) { .logo > span:not(.logo-ic) { display: none; } .topo.prof .usuario.estatico { display: none; } .topo { flex-wrap: nowrap; } .topo .menu { min-width: 0; } }
+
+/* ---------- Lição em telas baixas (Chromebook, notebook) ---------- */
+.captura { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; resize: none; pointer-events: none; z-index: -1; }
+@media (max-height: 820px) and (min-width: 900px) {
+  .treino .kb-wrap { grid-template-columns: minmax(0, 1fr) 230px; align-items: center; max-width: 1060px; gap: 1rem; }
+  .treino .maos { width: 100%; }
+  .treino .texto { font-size: clamp(1.15rem, 2.2vw, 1.5rem); padding: .8rem 1.2rem; }
+  .treino .tc { height: clamp(28px, 5.4vh, 40px); }
+  .treino-topo { margin-bottom: .5rem; }
+  .treino .barra.fina { margin-bottom: .6rem; }
+  .treino .dica-linha { min-height: 2.2em; margin: .5rem 0 .1rem; }
+  .treino-rodape { margin-top: .6rem; }
+  #conteudo:has(.treino) { padding-top: .8rem; }
+}
+
+/* ---------- Fotos de perfil ---------- */
+.avatar.xg { width: 112px; height: 112px; font-size: 2.2rem; }
+.foto-modal { text-align: center; }
+.foto-previa { display: grid; place-items: center; margin: .8rem 0 1rem; }
+.foto-previa .avatar { box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--primaria); }
+.foto-modal .acoes { margin-top: .8rem; }
+.config-fotos { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 1rem 1.2rem; }
+.config-fotos .mini { margin: 0; flex: 1; min-width: 220px; }
+.fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .9rem; margin-top: 1rem; }
+.foto-card { display: grid; justify-items: center; text-align: center; gap: .3rem; padding: 1.1rem .8rem; }
+.foto-card .acoes { margin-top: .4rem; gap: .4rem; }
+.foto-card .chk { font-size: .82rem; }
+.menu a { white-space: nowrap; }
+@media (max-width: 1250px) { .topo.prof .u-info { display: none; } .topo.prof .usuario { padding: .25rem; } }
+@media (max-width: 1050px) { .topo.prof .menu .mt { display: none; } }

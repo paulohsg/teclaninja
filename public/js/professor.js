@@ -1,10 +1,10 @@
 // Painel do professor: turmas, lista de alunos, detalhes e exportação.
-import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo, observarCurso, definirCurso } from './store.js';
+import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo, observarCurso, definirCurso, definirFotos, salvarFoto, bloquearFoto } from './store.js';
 import { LICOES, MODULOS } from './licoes.js';
 import { JOGOS } from './jogos.js';
 import { criarTeclado, codeDe } from './teclado.js';
 import { nivelDe, CONQUISTAS, sequencia, decTecla, precisaoGeral, licoesFeitas, totalEstrelas, normalizar, novoAluno, dadosRanking, codTecla } from './progresso.js';
-import { $, $$, esc, toast, aplicarTema, alternarTema, fmtTempo, fmtData, avatar, modal, GOOGLE_SVG, hoje } from './ui.js';
+import { $, $$, esc, toast, aplicarTema, alternarTema, fmtTempo, fmtData, avatar, modal, GOOGLE_SVG, hoje, reduzirImagem } from './ui.js';
 
 const app = $('#app');
 const P = { user: null, turmas: [], alunos: [], turma: '', busca: '', ordem: 'nome', dir: 1, aba: 'alunos', pararCurso: null };
@@ -53,6 +53,7 @@ function painel() {
     <nav class="menu">
       <a href="#" data-aba="alunos"><span class="mi">👩‍🎓</span><span class="mt">Alunos</span></a>
       <a href="#" data-aba="turmas"><span class="mi">🏫</span><span class="mt">Turmas</span></a>
+      <a href="#" data-aba="fotos"><span class="mi">📷</span><span class="mt">Fotos</span></a>
       <a href="index.html"><span class="mi">⌨️</span><span class="mt">Ver curso</span></a>
     </nav>
     <div class="topo-dir">
@@ -69,7 +70,8 @@ function painel() {
   <main id="conteudo" class="pagina larga"></main>`;
   $('#bt-tema').onclick = alternarTema;
   $('#bt-sair').onclick = () => sair();
-  $$('[data-aba]').forEach(a => a.onclick = e => { e.preventDefault(); P.aba = a.dataset.aba; render(); });
+  // A aba Fotos sempre busca os dados mais recentes (para moderar as fotos novas).
+  $$('[data-aba]').forEach(a => a.onclick = e => { e.preventDefault(); P.aba = a.dataset.aba; P.aba === 'fotos' ? carregar() : render(); });
   ligarInterruptor();
   carregar();
 }
@@ -77,7 +79,9 @@ function painel() {
 /** Botão liga/desliga do curso (vale para todos os alunos, em tempo real). */
 function ligarInterruptor() {
   const sw = $('#sw-curso'), txt = $('#sw-txt'), caixa = $('#sw');
-  const mostrar = lib => {
+  const mostrar = (lib, dados = {}) => {
+    P.fotosLiberadas = dados.fotosLiberadas !== false;
+    atualizarSwitchFotos();
     sw.checked = lib; sw.disabled = false;
     caixa.classList.toggle('desligado', !lib);
     txt.textContent = lib ? 'Curso liberado' : 'Curso pausado';
@@ -115,7 +119,7 @@ async function carregar() {
 
 function render() {
   $$('[data-aba]').forEach(a => a.classList.toggle('ativo', a.dataset.aba === P.aba));
-  P.aba === 'turmas' ? abaTurmas() : abaAlunos();
+  ({ turmas: abaTurmas, fotos: abaFotos }[P.aba] || abaAlunos)();
 }
 
 const turmaDe = cod => P.turmas.find(t => t.codigo === cod);
@@ -395,4 +399,64 @@ async function gerarExemplo() {
   }
   toast('12 alunos de exemplo criados!', 'ok');
   carregar();
+}
+
+/* ================================ Fotos ================================ */
+function atualizarSwitchFotos() {
+  const sw = $('#sw-fotos'), caixa = $('#swf');
+  if (!sw) return;
+  sw.checked = P.fotosLiberadas !== false; sw.disabled = false;
+  caixa.classList.toggle('desligado', !sw.checked);
+  $('#swf-txt').textContent = sw.checked ? 'Alunos podem trocar a foto' : 'Troca de fotos desligada';
+}
+
+function abaFotos() {
+  const c = $('#conteudo');
+  const lista = P.alunos.filter(a => !P.turma || a.turma === P.turma).sort((x, y) => (x.nome || '').localeCompare(y.nome || '', 'pt-BR'));
+  const comFoto = lista.filter(a => a.foto).length;
+  c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">📷 Fotos de perfil <small>${comFoto} de ${lista.length} com foto</small></h1></div>
+    <section class="card config-fotos">
+      <label class="interruptor" id="swf">
+        <input type="checkbox" id="sw-fotos" role="switch">
+        <span class="trilho" aria-hidden="true"><span class="bolinha"></span></span>
+        <span class="sw-txt" id="swf-txt"></span>
+      </label>
+      <p class="muted mini">Desligado, nenhum aluno troca a foto. Você continua podendo trocar e remover qualquer foto aqui. Para um aluno só, use "Bloquear troca" no cartão dele.</p>
+    </section>
+    <div class="filtros">
+      <button class="bt sec pequeno" id="ff-atualizar">↻ Atualizar</button>
+      <select id="ff-turma"><option value="">Todas as turmas</option>${ordenarTurmas(P.turmas).map(t => `<option value="${esc(t.codigo)}"${P.turma === t.codigo ? ' selected' : ''}>${esc(rotuloTurma(t))}</option>`).join('')}</select>
+    </div>
+    <div class="fotos-grid">${lista.map(a => `<div class="card foto-card" data-uid="${esc(a.uid)}">
+        ${avatar(a.nome, a.foto, 'xg')}
+        <b>${esc(a.nome)}</b><small class="muted">${esc(nomeTurma(a.turma))}</small>
+        <div class="acoes">
+          <label class="bt sec pequeno">📁 Trocar<input type="file" accept="image/*" hidden data-trocar></label>
+          <button class="bt perigo pequeno" data-remover${a.foto ? '' : ' disabled'}>Remover</button>
+        </div>
+        <label class="chk"><input type="checkbox" data-bloquear${a.fotoBloqueada ? ' checked' : ''}> 🔒 Bloquear troca</label>
+      </div>`).join('') || '<p class="muted">Nenhum aluno nesta turma.</p>'}</div>`;
+  atualizarSwitchFotos();
+  $('#sw-fotos').onchange = async e => {
+    const lib = e.target.checked; e.target.disabled = true;
+    try { await definirFotos(lib); P.fotosLiberadas = lib; toast(lib ? 'Alunos já podem trocar a foto.' : 'Troca de fotos desligada para todos.', 'ok'); }
+    catch (err) { console.error(err); toast('Não foi possível mudar. Confira se as regras novas do firestore.rules foram publicadas.', 'erro'); }
+    atualizarSwitchFotos();
+  };
+  $('#ff-turma').onchange = e => { P.turma = e.target.value; abaFotos(); };
+  $('#ff-atualizar').onclick = carregar;
+  const alunoDe = el => P.alunos.find(a => a.uid === el.closest('.foto-card').dataset.uid);
+  const trocar = async (a, foto) => {
+    try { await salvarFoto(a.uid, foto); a.foto = foto; toast(foto ? `Foto de ${esc(a.nome)} trocada.` : `Foto de ${esc(a.nome)} removida.`, 'ok'); abaFotos(); }
+    catch (err) { console.error(err); toast('Erro: ' + esc(err.message), 'erro'); }
+  };
+  $$('[data-trocar]', c).forEach(inp => inp.onchange = async () => {
+    try { trocar(alunoDe(inp), await reduzirImagem(inp.files[0])); } catch (err) { toast(esc(err.message), 'erro'); }
+  });
+  $$('[data-remover]', c).forEach(b => b.onclick = () => trocar(alunoDe(b), ''));
+  $$('[data-bloquear]', c).forEach(chk => chk.onchange = async () => {
+    const a = alunoDe(chk);
+    try { await bloquearFoto(a.uid, chk.checked); a.fotoBloqueada = chk.checked; toast(chk.checked ? `${esc(a.nome)} não pode mais trocar a foto.` : `${esc(a.nome)} pode trocar a foto de novo.`, 'ok'); }
+    catch (err) { chk.checked = !chk.checked; toast('Erro: ' + esc(err.message), 'erro'); }
+  });
 }

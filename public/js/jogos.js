@@ -3,6 +3,7 @@
 import { som, esc, rnd, embaralhar } from './ui.js';
 import { Motor } from './motor.js';
 import { criarTeclado, codeDe } from './teclado.js';
+import { ouvirDigitacao } from './entrada.js';
 
 export const JOGOS = [
   { id: 'chuva', nome: 'Chuva de Meteoros', icone: '☄️', cor: '#f97316',
@@ -22,14 +23,9 @@ export const JOGOS = [
     como: ['O cronômetro começa na primeira tecla.', 'Digite o máximo que conseguir em 60 segundos.', 'PPM = palavras por minuto (cada 5 caracteres contam como 1 palavra).'] }
 ];
 
+// Cada caractere digitado chega em fn(letraMinuscula, { code }).
 function ouvirTeclas(fn) {
-  const h = e => {
-    if (e.ctrlKey || e.metaKey || (e.altKey && !e.getModifierState?.('AltGraph'))) return;
-    if (e.key.length !== 1) return;
-    e.preventDefault(); fn(e.key.toLowerCase(), e);
-  };
-  addEventListener('keydown', h);
-  return () => removeEventListener('keydown', h);
+  return ouvirDigitacao({ onTexto: (texto, code) => { for (const ch of texto) fn(ch.toLowerCase(), { code }); } });
 }
 
 const hudSet = (el, k, v) => { const x = el.querySelector(`[data-h="${k}"]`); if (x) x.innerHTML = v; };

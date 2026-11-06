@@ -95,18 +95,32 @@ export function criarTeclado(el, { cores = true } = {}) {
   };
 }
 
-const MAO = (ids, espelho) => `<g${espelho ? ' transform="translate(430,0) scale(-1,1)"' : ''}>
-  <rect class="palma" x="16" y="118" width="134" height="100" rx="46"/>
-  <rect class="dedo" data-dedo="${ids[0]}" x="14" y="72" width="28" height="92" rx="14"/>
-  <rect class="dedo" data-dedo="${ids[1]}" x="48" y="38" width="30" height="122" rx="15"/>
-  <rect class="dedo" data-dedo="${ids[2]}" x="83" y="22" width="30" height="136" rx="15"/>
-  <rect class="dedo" data-dedo="${ids[3]}" x="118" y="40" width="30" height="120" rx="15"/>
-  <rect class="dedo" data-dedo="T" x="150" y="118" width="28" height="84" rx="14" transform="rotate(28 164 200)"/>
-</g>`;
+// Mãos vistas de cima, estilizadas como luvas. Dedos: [id, x da base, y da base, comprimento, largura, ângulo].
+const DEDOS_MAO = [['5', 45, 134, 62, 28, -14], ['4', 76, 118, 82, 31, -5], ['3', 108, 114, 92, 32, 0], ['2', 140, 120, 82, 31, 7], ['T', 160, 186, 74, 32, 42]];
+const PALMA = 'M31 150 C30 122 50 112 78 112 L140 112 C162 112 173 128 173 148 L176 180 C178 206 168 230 162 252 L48 252 C38 228 29 196 31 150 Z';
+
+function dedoPath(len, w) {
+  const t = w * 0.86, r = t / 2;
+  return `M${-w / 2} 8 L${-r} ${-len + r} A${r} ${r} 0 0 1 ${r} ${-len + r} L${w / 2} 8 Z`;
+}
+
+function mao(lado) {
+  const id = n => (n === 'T' ? 'T' : lado + n);
+  const dedos = DEDOS_MAO.map(([n, x, y, len, w, ang]) => ({ id: id(n), tr: `translate(${x} ${y}) rotate(${ang})`, d: dedoPath(len, w), unhaY: -len + w * 0.62, unhaR: w * 0.27 }));
+  const formas = cls => `<path class="${cls}" d="${PALMA}"/>` + dedos.map(f => `<path class="${cls}" transform="${f.tr}" d="${f.d}"/>`).join('');
+  return `<g${lado === 'R' ? ' transform="translate(440 0) scale(-1 1)"' : ''}>
+    <g class="contorno">${formas('')}</g>
+    <g class="pele">${dedos.map(f => `<path transform="${f.tr}" d="${f.d}"/>`).join('')}</g>
+    ${dedos.map(f => `<path class="dedo" data-dedo="${f.id}" transform="${f.tr}" d="${f.d}"/>`).join('')}
+    <g class="pele"><path d="${PALMA}"/></g>
+    <path class="palma-luz" d="M60 154 C84 140 128 140 150 154"/>
+    ${dedos.map(f => `<ellipse class="unha" data-dedo="${f.id}" transform="${f.tr}" cx="0" cy="${f.unhaY.toFixed(1)}" rx="${(f.unhaR * 1.05).toFixed(1)}" ry="${(f.unhaR * 1.3).toFixed(1)}"/>`).join('')}
+  </g>`;
+}
 
 /** Desenha as duas mãos; destacar(['L2','T']) acende os dedos indicados. */
 export function criarMaos(el) {
   el.classList.add('maos');
-  el.innerHTML = `<svg viewBox="0 0 430 230" role="img" aria-label="Mãos: o dedo aceso é o que deve ser usado">${MAO(['L5', 'L4', 'L3', 'L2'])}${MAO(['R5', 'R4', 'R3', 'R2'], true)}</svg>`;
-  return { destacar(dedos = []) { el.querySelectorAll('.dedo').forEach(d => d.classList.toggle('ativo', dedos.includes(d.dataset.dedo))); } };
+  el.innerHTML = `<svg viewBox="0 0 440 240" role="img" aria-label="Mãos: o dedo aceso é o que deve ser usado">${mao('L')}${mao('R')}</svg>`;
+  return { destacar(dedos = []) { el.querySelectorAll('.dedo, .unha').forEach(d => d.classList.toggle('ativo', dedos.includes(d.dataset.dedo))); } };
 }
