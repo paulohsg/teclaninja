@@ -3,6 +3,7 @@ import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair,
 import { LICOES, MODULOS, FRASES, gerarExercicios, palavrasPara } from './licoes.js';
 import { criarTeclado, criarMaos, passos, codeDe } from './teclado.js';
 import { Motor } from './motor.js';
+import { icone } from './icones.js';
 import { JOGOS, iniciarJogo } from './jogos.js';
 import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUISTAS, sequencia, teclasAprendidas, licaoLiberada, meta3, decTecla, dadosRanking, precisaoGeral, licoesFeitas, totalEstrelas } from './progresso.js';
 import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd, modal, reduzirImagem } from './ui.js';
@@ -70,7 +71,7 @@ function acompanharCurso() {
       if (lib === S.liberado) return;
       S.liberado = lib;
       if (!S.aluno || !$('#conteudo')) return;
-      toast(lib ? '🎉 O professor liberou o curso. Bons estudos!' : '🔒 O professor pausou o curso.', lib ? 'ok' : '');
+      toast(lib ? 'O professor liberou o curso. Bons estudos!' : 'O professor pausou o curso.', lib ? 'ok' : '', lib ? 'party-popper' : 'lock');
       rotear();
     }).then(parar => { S.pararCurso = parar; }).catch(e => { console.error(e); if (primeiro) { primeiro = false; resolve(true); } });
   });
@@ -107,13 +108,13 @@ function telaLogin(erro = '') {
   let modo = 'entrar', turmas = [];
   app.innerHTML = `<div class="login">
     <section class="login-hero">
-      <div class="logo grande"><span class="logo-ic">⌨️</span><span>Tecla<b>Ninja</b></span></div>
+      <div class="logo grande"><span class="logo-ic">${icone('keyboard')}</span><span>Tecla<b>Ninja</b></span></div>
       <h1>Digite rápido.<br><span class="grad">Sem olhar para o teclado.</span></h1>
       <p class="sub">Um curso de digitação completo no teclado <b>ABNT2</b>, com lições curtas, jogos e desafios. Treine, ganhe XP e suba de nível!</p>
       <ul class="feat">
-        <li><span>📚</span><div><b>${LICOES.length} lições</b><small>da fileira base aos textos completos</small></div></li>
-        <li><span>🎮</span><div><b>${JOGOS.length} jogos</b><small>meteoros, naves, corrida e mais</small></div></li>
-        <li><span>🏅</span><div><b>Conquistas e ranking</b><small>dispute com a sua turma</small></div></li>
+        <li><span>${icone('book-open')}</span><div><b>${LICOES.length} lições</b><small>da fileira base aos textos completos</small></div></li>
+        <li><span>${icone('gamepad-2')}</span><div><b>${JOGOS.length} jogos</b><small>meteoros, naves, corrida e mais</small></div></li>
+        <li><span>${icone('award')}</span><div><b>Conquistas e ranking</b><small>dispute com a sua turma</small></div></li>
       </ul>
       <div class="teclas-deco" aria-hidden="true">${'ASDF JKLÇ'.split('').map((c, i) => c === ' ' ? '<i class="gap"></i>' : `<span style="--i:${i}">${c}</span>`).join('')}</div>
     </section>
@@ -122,7 +123,7 @@ function telaLogin(erro = '') {
         <button type="button" role="tab" data-modo="entrar" class="ativo">Entrar</button>
         <button type="button" role="tab" data-modo="cadastro">Primeiro acesso</button>
       </div>
-      ${MODO === 'demo' ? '<p class="aviso">🧪 <b>Modo demonstração.</b> O Firebase ainda não foi configurado, então tudo fica salvo só neste navegador.</p>' : ''}
+      ${MODO === 'demo' ? `<p class="aviso">${icone('info')} <b>Modo demonstração.</b> O Firebase ainda não foi configurado, então tudo fica salvo só neste navegador.</p>` : ''}
       <form id="f-login" class="form-col" data-modo="entrar" novalidate>
         <label>Escola<select id="l-escola" required disabled><option>Carregando...</option></select></label>
         <label>Turma<select id="l-turma" required disabled></select></label>
@@ -204,22 +205,22 @@ function telaLogin(erro = '') {
 /* ================================ Estrutura ================================ */
 function montarShell() {
   app.innerHTML = `<header class="topo">
-    <a class="logo" href="#/inicio"><span class="logo-ic">⌨️</span><span>Tecla<b>Ninja</b></span></a>
+    <a class="logo" href="#/inicio"><span class="logo-ic">${icone('keyboard')}</span><span>Tecla<b>Ninja</b></span></a>
     <nav class="menu">
-      <a href="#/inicio" data-r="inicio"><span class="mi">🏠</span><span class="mt">Início</span></a>
-      <a href="#/jogos" data-r="jogos"><span class="mi">🎮</span><span class="mt">Jogos</span></a>
-      <a href="#/conquistas" data-r="conquistas"><span class="mi">🏅</span><span class="mt">Conquistas</span></a>
-      <a href="#/ranking" data-r="ranking"><span class="mi">🏆</span><span class="mt">Ranking</span></a>
-      <a href="#/guia" data-r="guia"><span class="mi">✋</span><span class="mt">Guia</span></a>
+      <a href="#/inicio" data-r="inicio"><span class="mi">${icone('house')}</span><span class="mt">Início</span></a>
+      <a href="#/jogos" data-r="jogos"><span class="mi">${icone('gamepad-2')}</span><span class="mt">Jogos</span></a>
+      <a href="#/conquistas" data-r="conquistas"><span class="mi">${icone('award')}</span><span class="mt">Conquistas</span></a>
+      <a href="#/ranking" data-r="ranking"><span class="mi">${icone('trophy')}</span><span class="mt">Ranking</span></a>
+      <a href="#/guia" data-r="guia"><span class="mi">${icone('hand')}</span><span class="mt">Guia</span></a>
     </nav>
     <div class="topo-dir">
-      <button class="ico" id="bt-som" title="Ligar/desligar sons">${som.ativo ? '🔊' : '🔇'}</button>
-      <button class="ico" id="bt-tema" title="Tema claro/escuro">🌓</button>
+      <button class="ico" id="bt-som" title="Ligar/desligar sons">${icone(som.ativo ? 'volume-2' : 'volume-x')}</button>
+      <button class="ico" id="bt-tema" title="Tema claro/escuro">${icone('sun-moon')}</button>
       <button class="usuario" id="usuario"></button>
     </div>
   </header>
   <main id="conteudo"></main>`;
-  $('#bt-som').onclick = e => { e.currentTarget.textContent = som.alternar() ? '🔊' : '🔇'; };
+  $('#bt-som').onclick = e => { e.currentTarget.innerHTML = icone(som.alternar() ? 'volume-2' : 'volume-x'); };
   $('#bt-tema').onclick = alternarTema;
   $('#usuario').onclick = menuUsuario;
   atualizarTopo();
@@ -237,9 +238,9 @@ function menuUsuario(e) {
   const a = S.aluno, m = document.createElement('div');
   m.className = 'menu-user';
   m.innerHTML = `<div class="mu-cab">${avatar(a.nome, a.foto, 'g')}<div><b>${esc(a.nome)}</b>${a.escola ? `<small>${esc(a.escola)}</small>` : ''}${a.turmaNome ? `<small>Turma: ${esc(a.turmaNome)}</small>` : ''}${S.user?.aluno ? '' : `<small>${esc(a.email)}</small>`}</div></div>
-    ${ehProfessor(a.email) ? '<a href="professor.html">👩‍🏫 Painel do professor</a>' : ''}
-    ${S.user?.aluno ? '<button id="mu-foto">📷 Trocar foto</button>' : ''}
-    <button id="mu-sair">🚪 Sair</button>`;
+    ${ehProfessor(a.email) ? `<a href="professor.html">${icone('school')} Painel do professor</a>` : ''}
+    ${S.user?.aluno ? `<button id="mu-foto">${icone('camera')} Trocar foto</button>` : ''}
+    <button id="mu-sair">${icone('log-out')} Sair</button>`;
   document.body.append(m);
   const fechar = () => { m.remove(); removeEventListener('click', fechar); };
   setTimeout(() => addEventListener('click', fechar));
@@ -254,12 +255,12 @@ function trocarFoto() {
     : !S.fotosLiberadas ? 'A troca de fotos está desligada pelo professor no momento.'
     : !S.liberado ? 'O curso está pausado. Troque a foto durante a aula.' : '';
   const m = modal(`<div class="foto-modal">
-    <h2>📷 Sua foto de perfil</h2>
+    <h2>Sua foto de perfil</h2>
     <div class="foto-previa" id="fp">${avatar(a.nome, a.foto, 'xg')}</div>
-    ${bloqueio ? `<p class="aviso">🔒 ${bloqueio}</p>` : `
+    ${bloqueio ? `<p class="aviso">${icone('lock')} ${bloqueio}</p>` : `
       <p class="muted">Escolha uma imagem. Ela aparece para a sua turma no ranking. Use uma imagem adequada para a escola: o professor pode trocar ou remover a qualquer momento.</p>
       <div class="acoes">
-        <label class="bt sec">📁 Escolher imagem<input type="file" id="fp-arq" accept="image/*" hidden></label>
+        <label class="bt sec">${icone('folder-open')} Escolher imagem<input type="file" id="fp-arq" accept="image/*" hidden></label>
         <button class="bt" id="fp-salvar" disabled>Salvar foto</button>
         ${a.foto ? '<button class="bt perigo" id="fp-remover">Remover foto</button>' : ''}
       </div>
@@ -280,7 +281,7 @@ function trocarFoto() {
     try {
       await salvarFoto(a.uid, foto);
       a.foto = foto; atualizarTopo(); m.fechar();
-      toast(foto ? 'Foto atualizada! 📸' : 'Foto removida.', 'ok');
+      toast(foto ? 'Foto atualizada!' : 'Foto removida.', 'ok', 'camera');
       if (location.hash.startsWith('#/ranking')) rotear();
     } catch (err) {
       console.error(err); bt.disabled = false;
@@ -309,7 +310,7 @@ function rotear() {
 function telaPausa(c) {
   const a = S.aluno, nv = nivelDe(a.xp);
   c.innerHTML = `<div class="pagina"><section class="card pausa">
-    <div class="pausa-ic" aria-hidden="true">🔒</div>
+    <div class="pausa-ic" aria-hidden="true">${icone('lock')}</div>
     <h1>O curso está pausado</h1>
     <p class="muted">Seu professor pausou as lições e os jogos por enquanto. Eles voltam na próxima aula, e esta tela muda sozinha quando o curso for liberado.</p>
     <div class="res-nums">
@@ -318,7 +319,7 @@ function telaPausa(c) {
       <div><b>${a.xp}</b><small>XP</small></div>
       <div><b>${a.melhorPpm || 0}</b><small>melhor PPM</small></div>
     </div>
-    <p class="mini">💡 Até lá: costas apoiadas, pulsos retos e olhos na tela!</p>
+    <p class="mini">${icone('lightbulb')} Até lá: costas apoiadas, pulsos retos e olhos na tela!</p>
   </section></div>`;
 }
 
@@ -330,13 +331,13 @@ async function salvarTudo(sessao) {
     if (S.aluno.turma) await salvarRanking(S.aluno.uid, dadosRanking(S.aluno)).catch(e => console.warn('ranking:', e.code || e));
   } catch (e) {
     console.error(e);
-    toast('⚠️ Não foi possível salvar o progresso. Verifique sua internet.', 'erro');
+    toast('Não foi possível salvar o progresso. Verifique sua internet.', 'erro');
   }
 }
 
 function anunciar(out) {
-  for (const c of out.conquistas || []) toast(`<span class="t-ic">${c.icone}</span><div><b>Nova conquista!</b><br>${esc(c.nome)}</div>`, 'conq');
-  if (out.subiu) { const nv = nivelDe(S.aluno.xp); toast(`<span class="t-ic">⬆️</span><div><b>Subiu de nível!</b><br>Nível ${nv.n}: ${nv.nome}</div>`, 'conq'); confete(); }
+  for (const c of out.conquistas || []) toast(`<b>Nova conquista!</b><br>${esc(c.nome)}`, 'conq', c.icone);
+  if (out.subiu) { const nv = nivelDe(S.aluno.xp); toast(`<b>Subiu de nível!</b><br>Nível ${nv.n}: ${nv.nome}`, 'conq', 'trending-up'); confete(); }
   atualizarTopo();
 }
 
@@ -351,7 +352,7 @@ const DICAS = [
   'Errou? Sem pânico. Respire e continue no seu ritmo.'
 ];
 
-const estrelasHtml = (n, max = 3) => `<span class="estrelas">${Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on' : ''}">★</i>`).join('')}</span>`;
+const estrelasHtml = (n, max = 3) => `<span class="estrelas">${Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on' : ''}">${icone('star')}</i>`).join('')}</span>`;
 
 function telaInicio(c) {
   const a = S.aluno, nv = nivelDe(a.xp);
@@ -361,10 +362,10 @@ function telaInicio(c) {
   c.innerHTML = `
   <section class="hero">
     <div class="hero-txt">
-      <p class="ola">Olá, ${esc(primeiroNome(a.nome))}! 👋</p>
-      <h1>${feitas === 0 ? 'Vamos começar sua jornada ninja?' : feitas === total ? 'Você concluiu o curso! 🎓' : 'Bora continuar treinando?'}</h1>
-      <p class="sub">💡 ${rnd(DICAS)}</p>
-      <a class="bt grande" href="#/licao/${prox.id}">▶ ${feitas ? 'Continuar' : 'Começar'}: ${esc(prox.titulo)}</a>
+      <p class="ola">Olá, ${esc(primeiroNome(a.nome))}!</p>
+      <h1>${feitas === 0 ? 'Vamos começar sua jornada ninja?' : feitas === total ? 'Você concluiu o curso!' : 'Bora continuar treinando?'}</h1>
+      <p class="sub">${icone('lightbulb')} ${rnd(DICAS)}</p>
+      <a class="bt grande" href="#/licao/${prox.id}">${icone('play')} ${feitas ? 'Continuar' : 'Começar'}: ${esc(prox.titulo)}</a>
     </div>
     <div class="hero-nivel">
       <div class="anel" style="--p:${nv.pct}"><div><b>${nv.n}</b><small>nível</small></div></div>
@@ -373,16 +374,16 @@ function telaInicio(c) {
     </div>
   </section>
   <section class="stats">
-    ${stat('📚', `${feitas}/${total}`, 'lições concluídas')}
-    ${stat('⭐', totalEstrelas(a), 'estrelas')}
-    ${stat('⚡', a.melhorPpm || 0, 'melhor PPM')}
-    ${stat('🎯', precisaoGeral(a) ? precisaoGeral(a) + '%' : '—', 'precisão geral')}
-    ${stat('🔥', seq, seq === 1 ? 'dia seguido' : 'dias seguidos')}
-    ${stat('⏱️', fmtTempo(a.stats.tempo), 'de prática')}
+    ${stat(icone('book-open'), `${feitas}/${total}`, 'lições concluídas')}
+    ${stat(icone('star'), totalEstrelas(a), 'estrelas')}
+    ${stat(icone('zap'), a.melhorPpm || 0, 'melhor PPM')}
+    ${stat(icone('target'), precisaoGeral(a) ? precisaoGeral(a) + '%' : '—', 'precisão geral')}
+    ${stat(icone('flame'), seq, seq === 1 ? 'dia seguido' : 'dias seguidos')}
+    ${stat(icone('clock'), fmtTempo(a.stats.tempo), 'de prática')}
   </section>
   <h2 class="secao">Sua trilha</h2>
   <section class="modulos">${MODULOS.map(m => moduloHtml(m)).join('')}</section>`;
-  $$('.licao.bloq', c).forEach(x => x.addEventListener('click', e => { e.preventDefault(); toast('🔒 Conclua a lição anterior para liberar esta.'); }));
+  $$('.licao.bloq', c).forEach(x => x.addEventListener('click', e => { e.preventDefault(); toast('Conclua a lição anterior para liberar esta.', '', 'lock'); }));
 }
 
 const stat = (ic, v, rot) => `<div class="stat"><span class="s-ic">${ic}</span><b>${v}</b><small>${rot}</small></div>`;
@@ -392,11 +393,11 @@ function moduloHtml(m) {
   const lics = LICOES.map((l, i) => ({ l, i })).filter(x => x.l.modulo === m.id);
   const feitas = lics.filter(x => a.licoes[x.l.id]?.concluida).length;
   return `<div class="modulo${feitas === lics.length ? ' completo' : ''}">
-    <div class="mod-cab"><span class="mod-ic">${m.icone}</span><div><h3>${m.nome}</h3><p>${m.desc}</p></div><span class="mod-prog">${feitas}/${lics.length}</span></div>
+    <div class="mod-cab"><span class="mod-ic">${icone(m.icone)}</span><div><h3>${m.nome}</h3><p>${m.desc}</p></div><span class="mod-prog">${feitas}/${lics.length}</span></div>
     <div class="licoes">${lics.map(({ l, i }) => {
       const p = a.licoes[l.id], lib = liberada(i);
       const cls = p?.concluida ? 'feita' : lib ? 'livre' : 'bloq';
-      return `<a class="licao ${cls}" href="#/licao/${l.id}"><span class="lnum">${lib ? i + 1 : '🔒'}</span><span class="ltit">${esc(l.titulo)}</span>${estrelasHtml(p?.estrelas || 0)}</a>`;
+      return `<a class="licao ${cls}" href="#/licao/${l.id}"><span class="lnum">${lib ? i + 1 : icone('lock')}</span><span class="ltit">${esc(l.titulo)}</span>${estrelasHtml(p?.estrelas || 0)}</a>`;
     }).join('')}</div></div>`;
 }
 
@@ -408,7 +409,7 @@ const letrasJogos = () => (S.user?.aluno ? teclasAprendidas(S.aluno) : "abcdefgh
 function telaLicao(c, id) {
   const idx = LICOES.findIndex(l => l.id === id), lic = LICOES[idx];
   if (!lic) { location.hash = '#/inicio'; return; }
-  if (!liberada(idx)) { toast('🔒 Conclua as lições anteriores primeiro.'); location.hash = '#/inicio'; return; }
+  if (!liberada(idx)) { toast('Conclua as lições anteriores primeiro.', '', 'lock'); location.hash = '#/inicio'; return; }
   const mod = MODULOS.find(m => m.id === lic.modulo);
   let exercicios = gerarExercicios(lic), i = 0, motor = null, kd = null, total;
   const zerar = () => { total = { acertos: 0, erros: 0, seg: 0, errosTecla: {} }; i = 0; };
@@ -422,16 +423,16 @@ function telaLicao(c, id) {
   function intro() {
     const novasCodes = lic.novas ? [...lic.novas].map(codeDe) : lic.destaque || [];
     c.innerHTML = `<div class="pagina">
-      <div class="crumb"><a href="#/inicio">← Início</a> · ${mod.icone} ${esc(mod.nome)}</div>
+      <div class="crumb"><a href="#/inicio">${icone('arrow-left')} Início</a> <span>·</span> ${icone(mod.icone)} ${esc(mod.nome)}</div>
       ${lic.tipo === 'teoria' ? guiaHtml() : ''}
       <section class="card licao-intro">
         <p class="tag">Lição ${idx + 1} de ${LICOES.length}</p>
         <h1>${esc(lic.titulo)}</h1>
         ${lic.novas ? `<div class="novas">${[...lic.novas].map(ch => `<span class="keycap" data-dedo="${passos(ch)[0]?.dedo}">${esc(ch.toUpperCase())}</span>`).join('')}</div>` : ''}
-        <div class="dica-box">💡 ${lic.dica}</div>
+        <div class="dica-box">${icone('lightbulb', 'dica-ic')}<div>${lic.dica}</div></div>
         <div class="kb-wrap"><div id="kb"></div><div id="maos"></div></div>
         <div class="regras">
-          <span>✅ Passar: <b>85%</b> de precisão</span>
+          <span>${icone('circle-check')} Passar: <b>85%</b> de precisão</span>
           ${lic.meta ? `<span>${estrelasHtml(2)} <b>92%</b> + <b>${lic.meta} PPM</b></span><span>${estrelasHtml(3)} <b>96%</b> + <b>${meta3(lic)} PPM</b></span>` : `<span>${estrelasHtml(3)} <b>96%</b> de precisão</span>`}
         </div>
         <div class="acoes"><button class="bt grande" id="comecar">Começar <kbd>Enter</kbd></button></div>
@@ -449,18 +450,18 @@ function telaLicao(c, id) {
     const ocultar = ler('tn_ocultar_kb', '0') === '1';
     c.innerHTML = `<div class="treino">
       <div class="treino-topo">
-        <a href="#/inicio" class="bt sec pequeno">✕ Sair</a>
+        <a href="#/inicio" class="bt sec pequeno">${icone('x')} Sair</a>
         <div class="tt"><small>Lição ${idx + 1}</small><b>${esc(lic.titulo)}</b></div>
         <div class="passos-ex" title="Exercícios">${exercicios.map((_, j) => `<i class="${j < i ? 'feito' : j === i ? 'atual' : ''}"></i>`).join('')}</div>
-        <div class="mini-stats"><span>⚡ <b id="ppm">0</b> PPM</span><span>🎯 <b id="prec">100</b>%</span></div>
+        <div class="mini-stats"><span>${icone('zap')} <b id="ppm">0</b> PPM</span><span>${icone('target')} <b id="prec">100</b>%</span></div>
       </div>
       <div class="barra fina"><i id="prog" style="width:0"></i></div>
       <div class="texto" id="texto"></div>
       <div class="dica-linha" id="dica"></div>
       <div class="kb-wrap${ocultar ? ' oculto' : ''}" id="kbw"><div id="kb"></div><div id="maos"></div></div>
       <div class="treino-rodape">
-        <label class="chk"><input type="checkbox" id="ocultar"${ocultar ? ' checked' : ''}> 🥷 Modo ninja: esconder teclado</label>
-        <button class="bt sec pequeno" id="reiniciar">↺ Reiniciar exercício</button>
+        <label class="chk"><input type="checkbox" id="ocultar"${ocultar ? ' checked' : ''}> ${icone('eye-off')} Modo ninja: esconder teclado</label>
+        <button class="bt sec pequeno" id="reiniciar">${icone('rotate-ccw')} Reiniciar exercício</button>
       </div></div>`;
     scrollTo({ top: 0 });
     $('#ocultar', c).onchange = e => { gravar('tn_ocultar_kb', e.target.checked ? '1' : '0'); $('#kbw', c).classList.toggle('oculto', e.target.checked); e.target.blur(); };
@@ -473,7 +474,7 @@ function telaLicao(c, id) {
         total.acertos += s.acertos; total.erros += s.erros; total.seg += s.seg;
         for (const [k, n] of Object.entries(s.errosTecla)) total.errosTecla[k] = (total.errosTecla[k] || 0) + n;
         i++;
-        $('#texto', c).insertAdjacentHTML('beforeend', '<div class="feito-ok">✓</div>');
+        $('#texto', c).insertAdjacentHTML('beforeend', `<div class="feito-ok">${icone('check')}</div>`);
         som.pop();
         setTimeout(() => (i < exercicios.length ? exercicio() : resultado()), 650);
       }
@@ -489,8 +490,8 @@ function telaLicao(c, id) {
     const piores = Object.entries(r.errosTecla).sort((a, b) => b[1] - a[1]).slice(0, 5);
     scrollTo({ top: 0 });
     c.innerHTML = `<div class="pagina"><section class="card resultado ${passou ? 'ok' : 'nao'}">
-      <div class="res-estrelas">${[0, 1, 2].map(k => `<i class="${k < out.estrelas ? 'on' : ''}" style="--d:${k * 0.25}s">★</i>`).join('')}</div>
-      <h1>${passou ? ['', 'Lição concluída!', 'Muito bem!', 'Perfeito, ninja! 🥷'][out.estrelas] : 'Quase lá!'}</h1>
+      <div class="res-estrelas">${[0, 1, 2].map(k => `<i class="${k < out.estrelas ? 'on' : ''}" style="--d:${k * 0.25}s">${icone('star')}</i>`).join('')}</div>
+      <h1>${passou ? ['', 'Lição concluída!', 'Muito bem!', 'Perfeito, ninja!'][out.estrelas] : 'Quase lá!'}</h1>
       <p class="muted">${passou ? (out.estrelas < 3 ? dicaMelhorar(lic, r) : 'Você dominou esta lição. Bora para a próxima!') : 'Sua precisão ficou abaixo de 85%. Vá com calma: precisão primeiro, velocidade depois!'}</p>
       <div class="res-nums">
         <div><b>${r.ppm}</b><small>PPM</small></div>
@@ -500,10 +501,10 @@ function telaLicao(c, id) {
       </div>
       ${piores.length ? `<div class="res-erros"><small>Teclas em que você mais errou:</small>${piores.map(([k, n]) => `<span class="keycap pequena" data-dedo="${passos(k).at(-1)?.dedo}">${k === ' ' ? 'espaço' : esc(k)}<sub>${n}</sub></span>`).join('')}</div>` : ''}
       <div class="acoes">
-        <button class="bt sec" id="repetir">↺ Repetir</button>
-        ${passou && prox ? `<a class="bt" href="#/licao/${prox.id}">Próxima lição → <kbd>Enter</kbd></a>` : ''}
-        ${passou && !prox ? '<a class="bt" href="#/jogos">🎮 Ir para os jogos</a>' : ''}
-        <a class="bt sec" href="#/inicio">🏠 Início</a>
+        <button class="bt sec" id="repetir">${icone('rotate-ccw')} Repetir</button>
+        ${passou && prox ? `<a class="bt" href="#/licao/${prox.id}">Próxima lição ${icone('arrow-right')} <kbd>Enter</kbd></a>` : ''}
+        ${passou && !prox ? `<a class="bt" href="#/jogos">${icone('gamepad-2')} Ir para os jogos</a>` : ''}
+        <a class="bt sec" href="#/inicio">${icone('house')} Início</a>
       </div></section></div>`;
     if (out.estrelas === 3) { confete(); som.sucesso(); } else if (passou) som.sucesso(); else som.falha();
     const repetir = () => { exercicios = gerarExercicios(lic); zerar(); exercicio(); };
@@ -524,16 +525,16 @@ function dicaMelhorar(lic, r) {
 /* ================================ Guia ================================ */
 function guiaHtml() {
   return `<section class="card guia">
-    <h2>🪑 Postura correta</h2>
+    <h2>${icone('armchair')} Postura correta</h2>
     <div class="guia-grid">
-      <div class="g-item"><span>🧍</span><p><b>Costas apoiadas</b> no encosto da cadeira e <b>pés no chão</b>.</p></div>
-      <div class="g-item"><span>💪</span><p><b>Cotovelos</b> perto do corpo, dobrados em um ângulo de mais ou menos 90°.</p></div>
-      <div class="g-item"><span>✋</span><p><b>Pulsos retos e soltos</b>, sem apoiar com força na mesa enquanto digita.</p></div>
-      <div class="g-item"><span>🖥️</span><p><b>Tela a um braço de distância</b>, com o topo na altura dos olhos.</p></div>
-      <div class="g-item"><span>👀</span><p><b>Olhos na tela</b>, não no teclado! No começo é difícil, mas vale a pena.</p></div>
-      <div class="g-item"><span>⏸️</span><p>A cada 30 minutos, <b>faça uma pausa</b> e alongue mãos, braços e pescoço.</p></div>
+      <div class="g-item"><span>${icone('person-standing')}</span><p><b>Costas apoiadas</b> no encosto da cadeira e <b>pés no chão</b>.</p></div>
+      <div class="g-item"><span>${icone('biceps-flexed')}</span><p><b>Cotovelos</b> perto do corpo, dobrados em um ângulo de mais ou menos 90°.</p></div>
+      <div class="g-item"><span>${icone('hand')}</span><p><b>Pulsos retos e soltos</b>, sem apoiar com força na mesa enquanto digita.</p></div>
+      <div class="g-item"><span>${icone('monitor')}</span><p><b>Tela a um braço de distância</b>, com o topo na altura dos olhos.</p></div>
+      <div class="g-item"><span>${icone('eye')}</span><p><b>Olhos na tela</b>, não no teclado! No começo é difícil, mas vale a pena.</p></div>
+      <div class="g-item"><span>${icone('pause')}</span><p>A cada 30 minutos, <b>faça uma pausa</b> e alongue mãos, braços e pescoço.</p></div>
     </div>
-    <h2>🏠 A fileira base</h2>
+    <h2>${icone('house')} A fileira base</h2>
     <p>É a "casa" dos seus dedos. Sempre que não estiver apertando uma tecla, os dedos descansam aqui:</p>
     <ul class="lista">
       <li>Mão esquerda: <span class="keycap pequena" data-dedo="L5">A</span><span class="keycap pequena" data-dedo="L4">S</span><span class="keycap pequena" data-dedo="L3">D</span><span class="keycap pequena" data-dedo="L2">F</span> — mão direita: <span class="keycap pequena" data-dedo="R2">J</span><span class="keycap pequena" data-dedo="R3">K</span><span class="keycap pequena" data-dedo="R4">L</span><span class="keycap pequena" data-dedo="R5">Ç</span></li>
@@ -542,11 +543,11 @@ function guiaHtml() {
       <li>Dedos levemente <b>curvados</b>, como se segurassem uma bolinha. Toque nas teclas de leve.</li>
       <li>Depois de apertar uma tecla, o dedo <b>volta para a fileira base</b>.</li>
     </ul>
-    <h2>🎨 Mapa dos dedos</h2>
+    <h2>${icone('palette')} Mapa dos dedos</h2>
     <p>Cada cor mostra qual dedo aperta cada tecla. As mãos acendem o dedo certo durante as lições.</p>
     <div class="kb-wrap"><div id="kb-guia"></div><div id="maos-guia"></div></div>
     <div class="legenda-dedos">${[['L5', 'Mínimos'], ['L4', 'Anelares'], ['L3', 'Médios'], ['L2', 'Indicador esq.'], ['R2', 'Indicador dir.'], ['T', 'Polegares']].map(([d, n]) => `<span><i class="dot" data-dedo="${d}"></i>${n}</span>`).join('')}</div>
-    <h2>🇧🇷 O teclado ABNT2</h2>
+    <h2>${icone('keyboard')} O teclado ABNT2</h2>
     <ul class="lista">
       <li>É o padrão brasileiro: tem a tecla <b>Ç</b> ao lado do L e teclas próprias para os acentos.</li>
       <li>Os acentos <b>´ ~ ^ \`</b> são teclas "mortas": aperte e solte o acento, <b>depois</b> aperte a vogal.</li>
@@ -563,8 +564,8 @@ function montarGuiaTeclado(c) {
 }
 
 function telaGuia(c) {
-  c.innerHTML = `<div class="pagina"><h1 class="titulo-pg">✋ Guia de digitação</h1>${guiaHtml()}
-    <div class="acoes"><a class="bt" href="#/licao/l00">Praticar a posição das mãos →</a></div></div>`;
+  c.innerHTML = `<div class="pagina"><h1 class="titulo-pg">${icone('hand', 'tit')} Guia de digitação</h1>${guiaHtml()}
+    <div class="acoes"><a class="bt" href="#/licao/l00">Praticar a posição das mãos ${icone('arrow-right')}</a></div></div>`;
   montarGuiaTeclado(c);
 }
 
@@ -572,11 +573,11 @@ function telaGuia(c) {
 function telaJogos(c) {
   const a = S.aluno, letras = letrasJogos();
   c.innerHTML = `<div class="pagina">
-    <h1 class="titulo-pg">🎮 Jogos</h1>
+    <h1 class="titulo-pg">${icone('gamepad-2', 'tit')} Jogos</h1>
     <p class="muted">Os jogos usam as letras que você já aprendeu nas lições (<span class="mono">${esc(letras.toUpperCase())}</span>). Quanto mais lições, mais desafios!</p>
     <div class="jogos-grid">${JOGOS.map(j => `<a class="jogo-card" href="#/jogo/${j.id}" style="--cor:${j.cor}">
-      <span class="j-ic">${j.icone}</span><h3>${j.nome}</h3><p>${j.desc}</p>
-      <div class="j-rod"><span>🏆 Recorde: <b>${a.jogos[j.id]?.recorde || 0}</b></span><span class="bt pequeno">Jogar</span></div></a>`).join('')}
+      <span class="j-ic">${icone(j.icone)}</span><h3>${j.nome}</h3><p>${j.desc}</p>
+      <div class="j-rod"><span>${icone('trophy')} Recorde: <b>${a.jogos[j.id]?.recorde || 0}</b></span><span class="bt pequeno">Jogar</span></div></a>`).join('')}
     </div></div>`;
 }
 
@@ -588,13 +589,13 @@ function telaJogo(c, id) {
   const tirarKd = () => { if (kd) removeEventListener('keydown', kd); kd = null; };
   S.limpeza = () => { inst?.destruir(); tirarKd(); };
   c.innerHTML = `<div class="pagina jogo-pg" style="--cor:${j.cor}">
-    <div class="jogo-cab"><a href="#/jogos" class="bt sec pequeno">← Jogos</a><h1>${j.icone} ${j.nome}</h1><span class="recorde">🏆 Recorde: <b id="rec">${a.jogos[j.id]?.recorde || 0}</b></span></div>
+    <div class="jogo-cab"><a href="#/jogos" class="bt sec pequeno">${icone('arrow-left')} Jogos</a><h1>${icone(j.icone, 'tit')} ${j.nome}</h1><span class="recorde">${icone('trophy')} Recorde: <b id="rec">${a.jogos[j.id]?.recorde || 0}</b></span></div>
     <div class="jogo-area" id="area"></div></div>`;
   const area = $('#area', c);
   inicio();
 
   function inicio() {
-    area.innerHTML = `<div class="jogo-inicio"><span class="j-ic grande">${j.icone}</span><h2>${j.nome}</h2><p>${j.desc}</p>
+    area.innerHTML = `<div class="jogo-inicio"><span class="j-ic grande">${icone(j.icone)}</span><h2>${j.nome}</h2><p>${j.desc}</p>
       <ol>${j.como.map(x => `<li>${x}</li>`).join('')}</ol>
       <button class="bt grande" id="jogar">Jogar <kbd>Enter</kbd></button></div>`;
     $('#jogar', area).onclick = jogar;
@@ -616,11 +617,11 @@ function telaJogo(c, id) {
     const ov = document.createElement('div');
     ov.className = 'jogo-fim';
     ov.innerHTML = `<div class="card">
-      <h2>${out.recorde ? '🏆 Novo recorde!' : 'Fim de jogo!'}</h2>
+      <h2>${out.recorde ? icone('trophy', 'tit') + ' Novo recorde!' : 'Fim de jogo!'}</h2>
       <div class="pontos-grandes">${res.pontos}<small>pontos</small></div>
       ${res.detalhe ? `<p class="muted">${esc(res.detalhe)}</p>` : ''}
       <p class="xp">+${out.xp} XP</p>
-      <div class="acoes"><button class="bt" id="denovo">↺ Jogar de novo <kbd>Enter</kbd></button><a class="bt sec" href="#/jogos">Outros jogos</a></div></div>`;
+      <div class="acoes"><button class="bt" id="denovo">${icone('rotate-ccw')} Jogar de novo <kbd>Enter</kbd></button><a class="bt sec" href="#/jogos">Outros jogos</a></div></div>`;
     area.append(ov);
     if (out.recorde && res.pontos > 0) { confete(); som.sucesso(); }
     $('#denovo', ov).onclick = jogar;
@@ -636,9 +637,9 @@ function telaConquistas(c) {
   const erros = Object.entries(a.stats.errosTecla || {}).map(([k, n]) => [decTecla(k), n]).sort((x, y) => y[1] - x[1]);
   const ganhas = CONQUISTAS.filter(x => a.conquistas[x.id]).length;
   c.innerHTML = `<div class="pagina">
-    <h1 class="titulo-pg">🏅 Conquistas <small>${ganhas}/${CONQUISTAS.length}</small></h1>
-    <div class="conq-grid">${CONQUISTAS.map(x => `<div class="conq ${a.conquistas[x.id] ? 'on' : ''}"><span class="c-ic">${x.icone}</span><b>${x.nome}</b><small>${x.desc}</small></div>`).join('')}</div>
-    <h2 class="secao">🔥 Seus pontos fracos</h2>
+    <h1 class="titulo-pg">${icone('award', 'tit')} Conquistas <small>${ganhas}/${CONQUISTAS.length}</small></h1>
+    <div class="conq-grid">${CONQUISTAS.map(x => `<div class="conq ${a.conquistas[x.id] ? 'on' : ''}"><span class="c-ic">${icone(x.icone)}</span><b>${x.nome}</b><small>${x.desc}</small></div>`).join('')}</div>
+    <h2 class="secao">${icone('flame', 'tit')} Seus pontos fracos</h2>
     <section class="card">${erros.length ? `<p class="muted">Quanto mais vermelha a tecla, mais você erra nela. Treine com calma essas teclas!</p>
       <div class="kb-wrap"><div id="kb-calor"></div></div>
       <div class="res-erros">${erros.slice(0, 8).map(([k, n]) => `<span class="keycap pequena" data-dedo="${passos(k).at(-1)?.dedo}">${k === ' ' ? 'espaço' : esc(k)}<sub>${n}</sub></span>`).join('')}</div>`
@@ -653,14 +654,14 @@ function telaConquistas(c) {
 /* ================================ Ranking ================================ */
 async function telaRanking(c) {
   const a = S.aluno;
-  c.innerHTML = `<div class="pagina"><h1 class="titulo-pg">🏆 Ranking ${a.turmaNome ? `<small>${esc(a.turmaNome)}</small>` : ''}</h1><div id="rk" class="card"><div class="spinner"></div></div></div>`;
+  c.innerHTML = `<div class="pagina"><h1 class="titulo-pg">${icone('trophy', 'tit')} Ranking ${a.turmaNome ? `<small>${esc(a.turmaNome)}</small>` : ''}</h1><div id="rk" class="card"><div class="spinner"></div></div></div>`;
   if (!a.turma) { $('#rk', c).innerHTML = '<p class="muted">Entre em uma turma para ver o ranking.</p>'; return; }
   try {
     await salvarRanking(a.uid, dadosRanking(a)).catch(e => console.warn("ranking:", e.code || e));
     const lista = await lerRanking(a.turma);
     if (!$('#rk', c)) return;
     $('#rk', c).innerHTML = `<ol class="ranking">${lista.map((r, i) => `<li class="${r.uid === a.uid ? 'eu' : ''}">
-      <span class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</span>${avatar(r.nome, r.foto)}<span class="rk-nome">${esc(r.nome)}${r.uid === a.uid ? ' <small>(você)</small>' : ''}</span>
+      <span class="pos ${['ouro', 'prata', 'bronze'][i] || ''}">${i + 1}</span>${avatar(r.nome, r.foto)}<span class="rk-nome">${esc(r.nome)}${r.uid === a.uid ? ' <small>(você)</small>' : ''}</span>
       <span class="rk-det">Nv ${r.nivel} · ${r.licoes} lições · ${r.melhorPpm} PPM</span><b class="rk-xp">${r.xp} XP</b></li>`).join('')}</ol>`;
   } catch (e) { console.error(e); $('#rk', c).innerHTML = '<p class="erro-msg">Não foi possível carregar o ranking.</p>'; }
 }

@@ -3,6 +3,7 @@ import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, lista
 import { LICOES, MODULOS } from './licoes.js';
 import { JOGOS } from './jogos.js';
 import { criarTeclado, codeDe } from './teclado.js';
+import { icone } from './icones.js';
 import { nivelDe, CONQUISTAS, sequencia, decTecla, precisaoGeral, licoesFeitas, totalEstrelas, normalizar, novoAluno, dadosRanking, codTecla } from './progresso.js';
 import { $, $$, esc, toast, aplicarTema, alternarTema, fmtTempo, fmtData, avatar, modal, GOOGLE_SVG, hoje, reduzirImagem } from './ui.js';
 
@@ -23,14 +24,14 @@ observarLogin((u, erro) => {
 
 function telaLogin(erro = '') {
   app.innerHTML = `<div class="login centro"><section class="login-card">
-    <div class="big-emoji">👩‍🏫</div>
+    <div class="big-emoji">${icone('school')}</div>
     <h2>Painel do Professor</h2>
     <p class="muted">Acompanhe o progresso dos alunos do TeclaNinja.</p>
     ${MODO === 'firebase'
       ? `<button class="bt-google" id="entrar">${GOOGLE_SVG}<span>Entrar com Google</span></button>`
-      : `<p class="aviso">🧪 Modo demonstração: qualquer pessoa entra como professor. Configure o Firebase para proteger o painel.</p><button class="bt grande" id="demo">Entrar como professor (demo)</button>`}
+      : `<p class="aviso">${icone('info')} Modo demonstração: qualquer pessoa entra como professor. Configure o Firebase para proteger o painel.</p><button class="bt grande" id="demo">Entrar como professor (demo)</button>`}
     ${erro ? `<p class="erro-msg">${esc(erro)}</p>` : ''}
-    <p class="mini"><a href="index.html">← Ir para o curso</a></p>
+    <p class="mini"><a href="index.html">${icone('arrow-left')} Ir para o curso</a></p>
   </section></div>`;
   $('#entrar')?.addEventListener('click', () => entrarGoogle(false).catch(e => toast('Erro ao entrar: ' + esc(e.message), 'erro')));
   $('#demo')?.addEventListener('click', () => entrarDemo('Professor(a)', 'professor@demo.local'));
@@ -38,7 +39,7 @@ function telaLogin(erro = '') {
 
 function telaNegado(u) {
   app.innerHTML = `<div class="login centro"><section class="login-card">
-    <div class="big-emoji">🔒</div><h2>Acesso restrito</h2>
+    <div class="big-emoji">${icone('lock')}</div><h2>Acesso restrito</h2>
     <p class="muted">A conta <b>${esc(u.email)}</b> não está cadastrada como professor.</p>
     <p class="mini">Para liberar, adicione o e-mail em <code>js/config.js</code> e em <code>firestore.rules</code>.</p>
     <button class="bt" id="sair">Entrar com outra conta</button> <a class="bt sec" href="index.html">Ir para o curso</a>
@@ -49,12 +50,12 @@ function telaNegado(u) {
 /* ================================ Painel ================================ */
 function painel() {
   app.innerHTML = `<header class="topo prof">
-    <a class="logo" href="professor.html"><span class="logo-ic">⌨️</span><span>Tecla<b>Ninja</b></span><span class="selo">Professor</span></a>
+    <a class="logo" href="professor.html"><span class="logo-ic">${icone('keyboard')}</span><span>Tecla<b>Ninja</b></span><span class="selo">Professor</span></a>
     <nav class="menu">
-      <a href="#" data-aba="alunos"><span class="mi">👩‍🎓</span><span class="mt">Alunos</span></a>
-      <a href="#" data-aba="turmas"><span class="mi">🏫</span><span class="mt">Turmas</span></a>
-      <a href="#" data-aba="fotos"><span class="mi">📷</span><span class="mt">Fotos</span></a>
-      <a href="index.html"><span class="mi">⌨️</span><span class="mt">Ver curso</span></a>
+      <a href="#" data-aba="alunos"><span class="mi">${icone('users')}</span><span class="mt">Alunos</span></a>
+      <a href="#" data-aba="turmas"><span class="mi">${icone('school')}</span><span class="mt">Turmas</span></a>
+      <a href="#" data-aba="fotos"><span class="mi">${icone('camera')}</span><span class="mt">Fotos</span></a>
+      <a href="index.html"><span class="mi">${icone('keyboard')}</span><span class="mt">Ver curso</span></a>
     </nav>
     <div class="topo-dir">
       <label class="interruptor" id="sw" title="Liga ou desliga as lições e os jogos para todos os alunos">
@@ -62,9 +63,9 @@ function painel() {
         <span class="trilho" aria-hidden="true"><span class="bolinha"></span></span>
         <span class="sw-txt" id="sw-txt">Carregando…</span>
       </label>
-      <button class="ico" id="bt-tema" title="Tema claro/escuro">🌓</button>
+      <button class="ico" id="bt-tema" title="Tema claro/escuro">${icone('sun-moon')}</button>
       <span class="usuario estatico">${avatar(P.user.nome, P.user.foto)}<span class="u-info"><b>${esc(P.user.nome)}</b><small>${esc(P.user.email)}</small></span></span>
-      <button class="ico" id="bt-sair" title="Sair">🚪</button>
+      <button class="ico" id="bt-sair" title="Sair">${icone('log-out')}</button>
     </div>
   </header>
   <main id="conteudo" class="pagina larga"></main>`;
@@ -95,7 +96,7 @@ function ligarInterruptor() {
     try {
       await definirCurso(lib);
       mostrar(lib);
-      toast(lib ? '✅ Curso liberado para todos os alunos.' : '🔒 Curso pausado. Os alunos não conseguem fazer lições nem jogos até você liberar.', lib ? 'ok' : '');
+      toast(lib ? 'Curso liberado para todos os alunos.' : 'Curso pausado. Os alunos não conseguem fazer lições nem jogos até você liberar.', lib ? 'ok' : '', lib ? 'circle-check' : 'lock');
     } catch (err) {
       console.error(err);
       mostrar(!lib);
@@ -145,22 +146,22 @@ function abaAlunos() {
     return v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0;
   };
   c.innerHTML = `
-    <div class="cab-pg"><h1 class="titulo-pg">👩‍🎓 Acompanhamento dos alunos</h1></div>
+    <div class="cab-pg"><h1 class="titulo-pg">${icone('users', 'tit')} Acompanhamento dos alunos</h1></div>
     <div class="filtros">
       <select id="f-turma"><option value="">Todas as turmas</option>${ordenarTurmas(P.turmas).map(t => `<option value="${esc(t.codigo)}"${P.turma === t.codigo ? ' selected' : ''}>${esc(rotuloTurma(t))}</option>`).join('')}</select>
-      <input id="f-busca" type="search" placeholder="🔎 Buscar aluno..." value="${esc(P.busca)}">
+      <input id="f-busca" type="search" placeholder="Buscar aluno..." value="${esc(P.busca)}">
       <span class="esp"></span>
-      <button class="bt sec pequeno" id="bt-atualizar">↻ Atualizar</button>
-      <button class="bt sec pequeno" id="bt-csv">⬇ Exportar planilha (CSV)</button>
-      ${MODO === 'demo' ? '<button class="bt pequeno" id="bt-exemplo">✨ Gerar alunos de exemplo</button>' : ''}
+      <button class="bt sec pequeno" id="bt-atualizar">${icone('refresh-cw')} Atualizar</button>
+      <button class="bt sec pequeno" id="bt-csv">${icone('download')} Exportar planilha (CSV)</button>
+      ${MODO === 'demo' ? `<button class="bt pequeno" id="bt-exemplo">${icone('wand-sparkles')} Gerar alunos de exemplo</button>` : ''}
     </div>
     <section class="stats">
-      ${stat('👥', linhas.length, 'alunos')}
-      ${stat('🟢', ativos, 'ativos nos últimos 7 dias')}
-      ${stat('📚', Math.round(media(l => l.licoes / LICOES.length) * 100) + '%', 'do curso concluído (média)')}
-      ${stat('⚡', Math.round(media(l => l.ppm, true)), 'PPM médio')}
-      ${stat('🎯', media(l => l.precisao, true).toFixed(1) + '%', 'precisão média')}
-      ${stat('⏱️', fmtTempo(linhas.reduce((s, l) => s + l.tempo, 0)), 'de prática no total')}
+      ${stat(icone('users'), linhas.length, 'alunos')}
+      ${stat(icone('activity'), ativos, 'ativos nos últimos 7 dias')}
+      ${stat(icone('book-open'), Math.round(media(l => l.licoes / LICOES.length) * 100) + '%', 'do curso concluído (média)')}
+      ${stat(icone('zap'), Math.round(media(l => l.ppm, true)), 'PPM médio')}
+      ${stat(icone('target'), media(l => l.precisao, true).toFixed(1) + '%', 'precisão média')}
+      ${stat(icone('clock'), fmtTempo(linhas.reduce((s, l) => s + l.tempo, 0)), 'de prática no total')}
     </section>
     <section class="card sem-pad"><div class="tabela-wrap" id="tabela"></div></section>`;
   $('#f-turma').onchange = e => { P.turma = e.target.value; abaAlunos(); };
@@ -174,7 +175,7 @@ function abaAlunos() {
 const stat = (ic, v, rot) => `<div class="stat"><span class="s-ic">${ic}</span><b>${v}</b><small>${rot}</small></div>`;
 
 const COLUNAS = [
-  ['nome', 'Aluno'], ['turma', 'Turma'], ['licoes', 'Progresso'], ['estrelas', '⭐'], ['ppm', 'Melhor PPM'],
+  ['nome', 'Aluno'], ['turma', 'Turma'], ['licoes', 'Progresso'], ['estrelas', 'Estrelas'], ['ppm', 'Melhor PPM'],
   ['precisao', 'Precisão'], ['tempo', 'Tempo'], ['xp', 'Nível / XP'], ['acesso', 'Último acesso']
 ];
 
@@ -184,22 +185,22 @@ function tabela(todas) {
     .sort((x, y) => (typeof x[P.ordem] === 'string' ? x[P.ordem].localeCompare(y[P.ordem]) : x[P.ordem] - y[P.ordem]) * P.dir);
   const el = $('#tabela');
   if (!todas.length) {
-    el.innerHTML = `<div class="vazio"><span>🧑‍🎓</span><p>Nenhum aluno ainda.</p><p class="muted">Crie uma turma na aba <b>Turmas</b> e passe o código para os alunos.</p></div>`;
+    el.innerHTML = `<div class="vazio"><span>${icone('users')}</span><p>Nenhum aluno ainda.</p><p class="muted">Crie uma turma na aba <b>Turmas</b> e peça aos alunos para fazerem o primeiro acesso.</p></div>`;
     return;
   }
-  el.innerHTML = `<table class="tabela"><thead><tr>${COLUNAS.map(([k, n]) => `<th data-k="${k}" class="${P.ordem === k ? (P.dir > 0 ? 'asc' : 'desc') : ''}">${n}</th>`).join('')}</tr></thead>
+  el.innerHTML = `<table class="tabela"><thead><tr>${COLUNAS.map(([k, n]) => `<th data-k="${k}" class="${['estrelas', 'ppm', 'precisao', 'tempo', 'xp', 'acesso'].includes(k) ? 'num ' : ''}${P.ordem === k ? (P.dir > 0 ? 'asc' : 'desc') : ''}">${n}</th>`).join('')}</tr></thead>
     <tbody>${linhas.map(l => {
       const nv = nivelDe(l.xp), dias = (Date.now() - l.acesso) / DIA, pct = l.licoes / LICOES.length;
       return `<tr data-uid="${esc(l.a.uid)}" tabindex="0">
-        <td><div class="cel-aluno">${avatar(l.nome, l.a.foto)}<div><b>${esc(l.nome)}</b><small>${esc(l.a.email)}</small></div></div></td>
+        <td><div class="cel-aluno">${avatar(l.nome, l.a.foto)}<div><b>${esc(l.nome)}</b>${String(l.a.email || '').endsWith('@' + DOMINIO_LOGIN) ? '' : `<small>${esc(l.a.email)}</small>`}</div></div></td>
         <td>${esc(l.turma)}${l.escola ? `<small class="muted d-block">${esc(l.escola)}</small>` : ''}</td>
         <td><div class="cel-prog"><div class="barra"><i style="width:${pct * 100}%"></i></div><small>${l.licoes}/${LICOES.length}</small></div></td>
-        <td>${l.estrelas}</td>
-        <td><b>${l.ppm}</b></td>
-        <td>${l.precisao ? l.precisao + '%' : '—'}</td>
-        <td>${fmtTempo(l.tempo)}</td>
-        <td>Nv ${nv.n} <small class="muted">· ${l.xp} XP</small></td>
-        <td><span class="selo-acesso ${dias < 2 ? 'v' : dias < 7 ? 'a' : 'r'}">${fmtData(l.acesso)}</span></td>
+        <td class="num">${l.estrelas}</td>
+        <td class="num"><b>${l.ppm}</b></td>
+        <td class="num">${l.precisao ? l.precisao + '%' : '—'}</td>
+        <td class="num">${fmtTempo(l.tempo)}</td>
+        <td class="num"><b>Nv ${nv.n}</b><small class="muted d-block">${l.xp} XP</small></td>
+        <td class="num"><span class="selo-acesso ${dias < 2 ? 'v' : dias < 7 ? 'a' : 'r'}">${fmtData(l.acesso)}</span></td>
       </tr>`;
     }).join('') || `<tr><td colspan="9" class="muted centro-txt">Nenhum aluno encontrado.</td></tr>`}</tbody></table>`;
   $$('th', el).forEach(th => th.onclick = () => { const k = th.dataset.k; P.dir = P.ordem === k ? -P.dir : (k === 'nome' || k === 'turma' ? 1 : -1); P.ordem = k; tabela(todas); });
@@ -232,42 +233,42 @@ async function detalhe(uid) {
   const erros = Object.entries(a.stats.errosTecla || {}).map(([k, n]) => [decTecla(k), n]).sort((x, y) => y[1] - x[1]);
   m.el.innerHTML = `
     <div class="det-cab">${avatar(a.nome, a.foto, 'g')}<div><h2>${esc(a.nome)}</h2><p class="muted">${esc(escolaDaTurma(a.turma, a))}${escolaDaTurma(a.turma, a) ? ' · ' : ''}${esc(nomeTurma(a.turma))}</p></div></div>
-    ${String(a.email || '').endsWith('@' + DOMINIO_LOGIN) ? `<details class="caixa-senha"><summary>🔑 O aluno esqueceu a senha?</summary>
+    ${String(a.email || '').endsWith('@' + DOMINIO_LOGIN) ? `<details class="caixa-senha"><summary>${icone('key-round')} O aluno esqueceu a senha?</summary>
       ${MODO === 'demo' ? `<p>No modo demonstração, clique abaixo. O aluno faz o <b>Primeiro acesso</b> de novo, com o mesmo nome e turma, e cria outra senha. O progresso é mantido.</p><button class="bt sec pequeno" id="d-senha">Liberar nova senha</button>`
       : `<ol>
         <li>Abra o <a href="https://console.firebase.google.com/project/_/authentication/users" target="_blank" rel="noopener">console do Firebase → Authentication → Usuários</a>.</li>
-        <li>Na busca, cole o login do aluno: <code id="d-login">${esc(a.email)}</code> <button class="bt sec pequeno" id="d-copiar">📋 Copiar</button></li>
+        <li>Na busca, cole o login do aluno: <code id="d-login">${esc(a.email)}</code> <button class="bt sec pequeno" id="d-copiar">${icone('copy')} Copiar</button></li>
         <li>Clique nos <b>três pontinhos (⋮)</b> da linha do aluno → <b>Excluir conta</b>.</li>
         <li>Peça ao aluno para fazer o <b>Primeiro acesso</b> de novo, com o <b>mesmo nome, sobrenome e turma</b>, criando uma nova senha. O progresso dele é mantido.</li>
       </ol>`}</details>` : ''}
     <section class="stats mini">
-      ${stat('🥷', `Nv ${nv.n}`, nv.nome + ` · ${a.xp} XP`)}
-      ${stat('📚', `${licoesFeitas(a)}/${LICOES.length}`, 'lições')}
-      ${stat('⭐', totalEstrelas(a), 'estrelas')}
-      ${stat('⚡', a.melhorPpm || 0, 'melhor PPM')}
-      ${stat('🎯', precisaoGeral(a) ? precisaoGeral(a) + '%' : '—', 'precisão geral')}
-      ${stat('⏱️', fmtTempo(a.stats.tempo), 'de prática')}
-      ${stat('🔥', sequencia(a.dias), 'dias seguidos')}
-      ${stat('📅', a.dias.length, 'dias praticados')}
+      ${stat(icone('award'), `Nv ${nv.n}`, nv.nome + ` · ${a.xp} XP`)}
+      ${stat(icone('book-open'), `${licoesFeitas(a)}/${LICOES.length}`, 'lições')}
+      ${stat(icone('star'), totalEstrelas(a), 'estrelas')}
+      ${stat(icone('zap'), a.melhorPpm || 0, 'melhor PPM')}
+      ${stat(icone('target'), precisaoGeral(a) ? precisaoGeral(a) + '%' : '—', 'precisão geral')}
+      ${stat(icone('clock'), fmtTempo(a.stats.tempo), 'de prática')}
+      ${stat(icone('flame'), sequencia(a.dias), 'dias seguidos')}
+      ${stat(icone('calendar-days'), a.dias.length, 'dias praticados')}
     </section>
-    <h3>📈 Evolução da velocidade (PPM)</h3>
+    <h3>${icone('chart-line')} Evolução da velocidade (PPM)</h3>
     <div id="grafico" class="grafico"></div>
-    <h3>📚 Progresso nas lições</h3>
-    <div class="det-mods">${MODULOS.map(md => `<div class="det-mod"><b>${md.icone} ${md.nome}</b><div class="det-lics">${LICOES.map((l, i) => ({ l, i })).filter(x => x.l.modulo === md.id).map(({ l, i }) => {
+    <h3>${icone('book-open')} Progresso nas lições</h3>
+    <div class="det-mods">${MODULOS.map(md => `<div class="det-mod"><b>${icone(md.icone)} <span>${md.nome}</span></b><div class="det-lics">${LICOES.map((l, i) => ({ l, i })).filter(x => x.l.modulo === md.id).map(({ l, i }) => {
       const p = a.licoes[l.id];
       return `<span class="det-lic ${p?.concluida ? 'ok' : p ? 'tent' : ''}" title="${esc(l.titulo)}${p ? ` — ${p.estrelas}★, ${p.ppm} PPM, ${p.precisao}%, ${p.tentativas} tentativa(s)` : ' — não iniciada'}">${i + 1}<i>${'★'.repeat(p?.estrelas || 0) || '·'}</i></span>`;
     }).join('')}</div></div>`).join('')}</div>
     <div class="det-2col">
-      <div><h3>🔥 Teclas com mais erros</h3>${erros.length ? `<div id="d-kb"></div><div class="res-erros">${erros.slice(0, 8).map(([k, n]) => `<span class="keycap pequena">${k === ' ' ? 'espaço' : esc(k)}<sub>${n}</sub></span>`).join('')}</div>` : '<p class="muted">Sem dados ainda.</p>'}</div>
-      <div><h3>🎮 Jogos</h3><table class="tabela compacta"><tbody>${JOGOS.map(j => `<tr><td>${j.icone} ${j.nome}</td><td>${a.jogos[j.id]?.partidas || 0} partida(s)</td><td>🏆 <b>${a.jogos[j.id]?.recorde || 0}</b></td></tr>`).join('')}</tbody></table>
-        <h3>🏅 Conquistas (${Object.keys(a.conquistas).length}/${CONQUISTAS.length})</h3>
-        <div class="det-conq">${CONQUISTAS.map(x => `<span class="${a.conquistas[x.id] ? 'on' : ''}" title="${esc(x.nome)}: ${esc(x.desc)}">${x.icone}</span>`).join('')}</div></div>
+      <div><h3>${icone('flame')} Teclas com mais erros</h3>${erros.length ? `<div id="d-kb"></div><div class="res-erros">${erros.slice(0, 8).map(([k, n]) => `<span class="keycap pequena">${k === ' ' ? 'espaço' : esc(k)}<sub>${n}</sub></span>`).join('')}</div>` : '<p class="muted">Sem dados ainda.</p>'}</div>
+      <div><h3>${icone('gamepad-2')} Jogos</h3><table class="tabela compacta"><tbody>${JOGOS.map(j => `<tr><td>${icone(j.icone)} ${j.nome}</td><td>${a.jogos[j.id]?.partidas || 0} partida(s)</td><td>${icone('trophy')} <b>${a.jogos[j.id]?.recorde || 0}</b></td></tr>`).join('')}</tbody></table>
+        <h3>${icone('award')} Conquistas (${Object.keys(a.conquistas).length}/${CONQUISTAS.length})</h3>
+        <div class="det-conq">${CONQUISTAS.map(x => `<span class="${a.conquistas[x.id] ? 'on' : ''}" title="${esc(x.nome)}: ${esc(x.desc)}">${icone(x.icone)}</span>`).join('')}</div></div>
     </div>
-    <h3>🕒 Atividades recentes</h3>
+    <h3>${icone('history')} Atividades recentes</h3>
     ${sessoes.length ? `<div class="tabela-wrap"><table class="tabela compacta"><thead><tr><th>Data</th><th>Atividade</th><th>Resultado</th><th>Tempo</th></tr></thead><tbody>
-      ${sessoes.slice(-15).reverse().map(s => `<tr><td>${new Date(s.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td><td>${s.tipo === 'licao' ? '📘' : '🎮'} ${esc(s.titulo)}</td>
-        <td>${s.tipo === 'licao' ? `${'★'.repeat(s.estrelas || 0) || '✗'} · ${s.ppm} PPM · ${s.precisao}%` : `${s.pontos} pts${s.ppm ? ` · ${s.ppm} PPM` : ''}`}</td><td>${fmtTempo(s.seg)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma atividade registrada.</p>'}
-    <div class="acoes fim"><button class="bt perigo pequeno" id="d-excluir">🗑 Excluir aluno e progresso</button></div>`;
+      ${sessoes.slice(-15).reverse().map(s => `<tr><td>${new Date(s.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td><td>${icone(s.tipo === 'licao' ? 'book-open' : 'gamepad-2')} ${esc(s.titulo)}</td>
+        <td>${s.tipo === 'licao' ? `${'★'.repeat(s.estrelas || 0) || 'não passou'} · ${s.ppm} PPM · ${s.precisao}%` : `${s.pontos} pts${s.ppm ? ` · ${s.ppm} PPM` : ''}`}</td><td>${fmtTempo(s.seg)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma atividade registrada.</p>'}
+    <div class="acoes fim"><button class="bt perigo pequeno" id="d-excluir">${icone('trash-2')} Excluir aluno e progresso</button></div>`;
 
   grafico($('#grafico', m.el), sessoes.filter(s => s.ppm > 0 && (s.tipo === 'licao' || s.ref === 'teste' || s.ref === 'corrida')));
   if (erros.length) {
@@ -327,7 +328,7 @@ function abaTurmas() {
   const c = $('#conteudo');
   const escolas = [...new Set(P.turmas.map(t => t.escola).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'pt-BR'));
   const grupos = escolas.concat(P.turmas.some(t => !t.escola) ? [''] : []);
-  c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">🏫 Turmas</h1></div>
+  c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">${icone('school', 'tit')} Turmas</h1></div>
     <section class="card">
       <h3>Criar nova turma</h3>
       <form id="f-nova" class="linha-form">
@@ -342,7 +343,7 @@ function abaTurmas() {
       const n = P.alunos.filter(a => a.turma === t.codigo).length;
       return `<div class="card turma"><h3>${esc(t.nome)}</h3>
         <p class="muted">${n} aluno(s) · criada em ${new Date(t.criadaEm).toLocaleDateString('pt-BR')}</p>
-        <div class="acoes"><button class="bt sec pequeno" data-ver="${esc(t.codigo)}">👀 Ver alunos</button><button class="bt perigo pequeno" data-excluir="${esc(t.codigo)}">🗑 Excluir</button></div></div>`;
+        <div class="acoes"><button class="bt sec pequeno" data-ver="${esc(t.codigo)}">${icone('eye')} Ver alunos</button><button class="bt perigo pequeno" data-excluir="${esc(t.codigo)}">${icone('trash-2')} Excluir</button></div></div>`;
     }).join('')}</div>`).join('') || '<p class="muted">Nenhuma turma criada ainda. Crie a primeira acima para os alunos conseguirem entrar.</p>'}`;
   $('#f-nova').onsubmit = async e => {
     e.preventDefault();
@@ -414,7 +415,7 @@ function abaFotos() {
   const c = $('#conteudo');
   const lista = P.alunos.filter(a => !P.turma || a.turma === P.turma).sort((x, y) => (x.nome || '').localeCompare(y.nome || '', 'pt-BR'));
   const comFoto = lista.filter(a => a.foto).length;
-  c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">📷 Fotos de perfil <small>${comFoto} de ${lista.length} com foto</small></h1></div>
+  c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">${icone('camera', 'tit')} Fotos de perfil <small>${comFoto} de ${lista.length} com foto</small></h1></div>
     <section class="card config-fotos">
       <label class="interruptor" id="swf">
         <input type="checkbox" id="sw-fotos" role="switch">
@@ -424,17 +425,17 @@ function abaFotos() {
       <p class="muted mini">Desligado, nenhum aluno troca a foto. Você continua podendo trocar e remover qualquer foto aqui. Para um aluno só, use "Bloquear troca" no cartão dele.</p>
     </section>
     <div class="filtros">
-      <button class="bt sec pequeno" id="ff-atualizar">↻ Atualizar</button>
+      <button class="bt sec pequeno" id="ff-atualizar">${icone('refresh-cw')} Atualizar</button>
       <select id="ff-turma"><option value="">Todas as turmas</option>${ordenarTurmas(P.turmas).map(t => `<option value="${esc(t.codigo)}"${P.turma === t.codigo ? ' selected' : ''}>${esc(rotuloTurma(t))}</option>`).join('')}</select>
     </div>
     <div class="fotos-grid">${lista.map(a => `<div class="card foto-card" data-uid="${esc(a.uid)}">
         ${avatar(a.nome, a.foto, 'xg')}
         <b>${esc(a.nome)}</b><small class="muted">${esc(nomeTurma(a.turma))}</small>
         <div class="acoes">
-          <label class="bt sec pequeno">📁 Trocar<input type="file" accept="image/*" hidden data-trocar></label>
+          <label class="bt sec pequeno">${icone('folder-open')} Trocar<input type="file" accept="image/*" hidden data-trocar></label>
           <button class="bt perigo pequeno" data-remover${a.foto ? '' : ' disabled'}>Remover</button>
         </div>
-        <label class="chk"><input type="checkbox" data-bloquear${a.fotoBloqueada ? ' checked' : ''}> 🔒 Bloquear troca</label>
+        <label class="chk"><input type="checkbox" data-bloquear${a.fotoBloqueada ? ' checked' : ''}> ${icone('lock')} Bloquear troca</label>
       </div>`).join('') || '<p class="muted">Nenhum aluno nesta turma.</p>'}</div>`;
   atualizarSwitchFotos();
   $('#sw-fotos').onchange = async e => {

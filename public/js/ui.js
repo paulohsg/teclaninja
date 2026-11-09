@@ -1,3 +1,4 @@
+import { icone } from './icones.js';
 // Utilitários de interface: seletores, sons, tema, notificações e confete.
 
 export const $ = (s, r = document) => r.querySelector(s);
@@ -38,11 +39,13 @@ export function avatar(nome, foto, cls = '') {
   return `<span class="avatar ${cls}">${esc(ini)}</span>`;
 }
 
-export function toast(msg, tipo = '') {
+export function toast(msg, tipo = '', ic = '') {
   let box = $('#toasts');
   if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.append(box); }
   const t = document.createElement('div');
-  t.className = 'toast ' + tipo; t.innerHTML = msg; box.append(t);
+  t.className = 'toast ' + tipo;
+  t.innerHTML = `<span class="t-ic">${icone(ic || { ok: 'circle-check', erro: 'circle-alert', conq: 'award' }[tipo] || 'info')}</span><div>${msg}</div>`;
+  box.append(t);
   setTimeout(() => t.classList.add('sai'), 3600);
   setTimeout(() => t.remove(), 4100);
 }
@@ -50,7 +53,7 @@ export function toast(msg, tipo = '') {
 export function modal(conteudo, cls = '') {
   const fundo = document.createElement('div');
   fundo.className = 'modal-fundo';
-  fundo.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true"><button class="modal-x" aria-label="Fechar">✕</button><div class="modal-corpo">${conteudo}</div></div>`;
+  fundo.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true"><button class="modal-x" aria-label="Fechar">${icone('x')}</button><div class="modal-corpo">${conteudo}</div></div>`;
   document.body.append(fundo);
   const fechar = () => { fundo.remove(); removeEventListener('keydown', esc_); };
   const esc_ = e => { if (e.key === 'Escape') fechar(); };

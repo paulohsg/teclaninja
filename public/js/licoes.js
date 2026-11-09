@@ -2,14 +2,14 @@
 import { rnd, embaralhar } from './ui.js';
 
 export const MODULOS = [
-  { id: 'm0', nome: 'Primeiros passos', icone: '🧘', desc: 'Postura correta e posição das mãos no teclado.' },
-  { id: 'm1', nome: 'Fileira base', icone: '🏠', desc: 'A "casa" dos seus dedos: A S D F G H J K L Ç.' },
-  { id: 'm2', nome: 'Fileira superior', icone: '⛰️', desc: 'Q W E R T Y U I O P — os dedos sobem e voltam.' },
-  { id: 'm3', nome: 'Fileira inferior', icone: '🔽', desc: 'Z X C V B N M , . ; — os dedos descem e voltam.' },
-  { id: 'm4', nome: 'Maiúsculas e pontuação', icone: '🔠', desc: 'Shift, interrogação, exclamação e dois-pontos.' },
-  { id: 'm5', nome: 'Acentuação ABNT2', icone: '✨', desc: '´ ~ ^ ` e Ç — o jeito brasileiro de digitar.' },
-  { id: 'm6', nome: 'Números e símbolos', icone: '🔢', desc: 'A fileira dos números e os símbolos mais usados.' },
-  { id: 'm7', nome: 'Textos e velocidade', icone: '🚀', desc: 'Textos curiosos para ganhar ritmo e velocidade.' }
+  { id: 'm0', nome: 'Primeiros passos', icone: 'person-standing', desc: 'Postura correta e posição das mãos no teclado.' },
+  { id: 'm1', nome: 'Fileira base', icone: 'house', desc: 'A "casa" dos seus dedos: A S D F G H J K L Ç.' },
+  { id: 'm2', nome: 'Fileira superior', icone: 'chevrons-up', desc: 'Q W E R T Y U I O P — os dedos sobem e voltam.' },
+  { id: 'm3', nome: 'Fileira inferior', icone: 'chevrons-down', desc: 'Z X C V B N M , . ; — os dedos descem e voltam.' },
+  { id: 'm4', nome: 'Maiúsculas e pontuação', icone: 'case-upper', desc: 'Shift, interrogação, exclamação e dois-pontos.' },
+  { id: 'm5', nome: 'Acentuação ABNT2', icone: 'type', desc: '´ ~ ^ ` e Ç — o jeito brasileiro de digitar.' },
+  { id: 'm6', nome: 'Números e símbolos', icone: 'hash', desc: 'A fileira dos números e os símbolos mais usados.' },
+  { id: 'm7', nome: 'Textos e velocidade', icone: 'rocket', desc: 'Textos curiosos para ganhar ritmo e velocidade.' }
 ];
 
 // Palavras com grafia correta SEM acento (usadas nas lições de teclas e nos jogos).
@@ -183,14 +183,14 @@ export const LICOES = [
 const P = (id, modulo, titulo, dica, meta, palavras) => ({ id, modulo, titulo, tipo: 'palavras', dica, meta, palavras: palavras.trim().split(/\s*,\s*/) });
 
 MODULOS.push(
-  { id: 'm8', nome: 'Combinações difíceis', icone: '🧩', desc: 'NH, LH, CH, ÃO, QU, RR, SS e Ç: as combinações mais traiçoeiras do português.' },
-  { id: 'm9', nome: 'Palavras temáticas', icone: '🗂️', desc: 'Vocabulário de esportes, animais, comidas, tecnologia e mais.' },
-  { id: 'm10', nome: 'Frases do dia a dia', icone: '💬', desc: 'Ditados, mensagens, diálogos e pontuação completa.' },
-  { id: 'm11', nome: 'Números no mundo real', icone: '🧮', desc: 'Datas, horários, preços, endereços, e-mails e contas.' },
-  { id: 'm12', nome: 'Textos: ciência e natureza', icone: '🔬', desc: 'Corpo humano, planetas, dinossauros e outros mistérios.' },
-  { id: 'm13', nome: 'Textos: Brasil e história', icone: '🇧🇷', desc: 'História do Brasil, Goiás, o Cerrado e a nossa cultura.' },
-  { id: 'm14', nome: 'Textos: tecnologia e mundo', icone: '🌍', desc: 'Computadores, internet, Olimpíadas e o espaço.' },
-  { id: 'm15', nome: 'Desafios finais', icone: '🏆', desc: 'Textos longos e metas altas. Só para quem é ninja de verdade!' }
+  { id: 'm8', nome: 'Combinações difíceis', icone: 'puzzle', desc: 'NH, LH, CH, ÃO, QU, RR, SS e Ç: as combinações mais traiçoeiras do português.' },
+  { id: 'm9', nome: 'Palavras temáticas', icone: 'library', desc: 'Vocabulário de esportes, animais, comidas, tecnologia e mais.' },
+  { id: 'm10', nome: 'Frases do dia a dia', icone: 'message-circle', desc: 'Ditados, mensagens, diálogos e pontuação completa.' },
+  { id: 'm11', nome: 'Números no mundo real', icone: 'calculator', desc: 'Datas, horários, preços, endereços, e-mails e contas.' },
+  { id: 'm12', nome: 'Textos: ciência e natureza', icone: 'microscope', desc: 'Corpo humano, planetas, dinossauros e outros mistérios.' },
+  { id: 'm13', nome: 'Textos: Brasil e história', icone: 'landmark', desc: 'História do Brasil, Goiás, o Cerrado e a nossa cultura.' },
+  { id: 'm14', nome: 'Textos: tecnologia e mundo', icone: 'globe', desc: 'Computadores, internet, Olimpíadas e o espaço.' },
+  { id: 'm15', nome: 'Desafios finais', icone: 'trophy', desc: 'Textos longos e metas altas. Só para quem é ninja de verdade!' }
 );
 
 LICOES.push(

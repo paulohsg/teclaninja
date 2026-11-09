@@ -4,21 +4,22 @@ import { som, esc, rnd, embaralhar } from './ui.js';
 import { Motor } from './motor.js';
 import { criarTeclado, codeDe } from './teclado.js';
 import { ouvirDigitacao } from './entrada.js';
+import { icone } from './icones.js';
 
 export const JOGOS = [
-  { id: 'chuva', nome: 'Chuva de Meteoros', icone: '☄️', cor: '#f97316',
+  { id: 'chuva', nome: 'Chuva de Meteoros', icone: 'cloud-hail', cor: '#f97316',
     desc: 'Letras caem do céu! Digite cada letra para destruir o meteoro antes que ele atinja a cidade.',
     como: ['Digite a letra que aparece no meteoro.', 'A cada 15 acertos, o nível sobe e tudo fica mais rápido.', 'Você tem 3 vidas. Errar zera o combo!'] },
-  { id: 'galaxia', nome: 'Defesa Galáctica', icone: '🚀', cor: '#8b5cf6',
+  { id: 'galaxia', nome: 'Defesa Galáctica', icone: 'rocket', cor: '#8b5cf6',
     desc: 'Naves inimigas trazem palavras. Digite a palavra inteira para disparar seu laser.',
     como: ['Digite a primeira letra para mirar em uma nave.', 'Termine a palavra para destruí-la.', 'Se uma nave passar da linha do escudo, você perde um escudo.'] },
-  { id: 'corrida', nome: 'Corrida Turbo', icone: '🏎️', cor: '#ef4444',
+  { id: 'corrida', nome: 'Corrida Turbo', icone: 'car', cor: '#ef4444',
     desc: 'Cada letra certa acelera seu carro. Digite a frase e chegue antes dos rivais!',
     como: ['Escolha a dificuldade dos rivais.', 'Digite a frase: cada acerto faz o carro andar.', 'Erros não fazem o carro andar — precisão é velocidade!'] },
-  { id: 'toupeira', nome: 'Caça-Toupeiras', icone: '🐹', cor: '#22c55e',
+  { id: 'toupeira', nome: 'Caça-Toupeiras', icone: 'hammer', cor: '#22c55e',
     desc: 'Uma toupeira aparece em uma tecla. Aperte a tecla certa antes que ela fuja!',
     como: ['Aperte a tecla onde a toupeira aparecer.', 'Quanto mais rápido, mais pontos. A toupeira dourada vale o dobro!', 'Ative o modo ninja para esconder as letras do teclado.'] },
-  { id: 'teste', nome: 'Desafio 60 segundos', icone: '⏱️', cor: '#06b6d4',
+  { id: 'teste', nome: 'Desafio 60 segundos', icone: 'timer', cor: '#06b6d4',
     desc: 'Teste de velocidade: quantas palavras por minuto você consegue digitar?',
     como: ['O cronômetro começa na primeira tecla.', 'Digite o máximo que conseguir em 60 segundos.', 'PPM = palavras por minuto (cada 5 caracteres contam como 1 palavra).'] }
 ];
@@ -29,7 +30,7 @@ function ouvirTeclas(fn) {
 }
 
 const hudSet = (el, k, v) => { const x = el.querySelector(`[data-h="${k}"]`); if (x) x.innerHTML = v; };
-const coracoes = n => '❤️'.repeat(Math.max(0, n)) + '🖤'.repeat(Math.max(0, 3 - n));
+const coracoes = n => `<span class="vidas" aria-label="${Math.max(0, n)} vidas">${[0, 1, 2].map(i => icone('heart', i < n ? 'cheio' : 'vazio')).join('')}</span>`;
 
 function banner(palco, txt) {
   const b = document.createElement('div'); b.className = 'banner'; b.textContent = txt; palco.append(b);
@@ -38,7 +39,7 @@ function banner(palco, txt) {
 
 /* ============================ Chuva de Meteoros ============================ */
 function chuva(el, ctx) {
-  el.innerHTML = `<div class="hud"><span>⭐ <b data-h="pontos">0</b></span><span>📈 Nível <b data-h="nivel">1</b></span><span>🔥 Combo <b data-h="combo">0</b></span><span data-h="vidas">${coracoes(3)}</span></div>
+  el.innerHTML = `<div class="hud"><span>${icone('star')} <b data-h="pontos">0</b></span><span>${icone('trending-up')} Nível <b data-h="nivel">1</b></span><span>${icone('flame')} Combo <b data-h="combo">0</b></span><span data-h="vidas">${coracoes(3)}</span></div>
     <div class="palco chuva"><div class="cidade"></div></div>`;
   const palco = el.querySelector('.palco'), letras = [...ctx.letras];
   let itens = [], pontos = 0, nivel = 1, combo = 0, vidas = 3, acertos = 0, erros = 0, ultimo = 0, raf, acabou = false;
@@ -85,7 +86,7 @@ function chuva(el, ctx) {
 
 /* ============================ Defesa Galáctica ============================ */
 function galaxia(el, ctx) {
-  el.innerHTML = `<div class="hud"><span>⭐ <b data-h="pontos">0</b></span><span>🌊 Onda <b data-h="onda">1</b></span><span>🛡️ <b data-h="escudos">3</b> escudos</span></div>
+  el.innerHTML = `<div class="hud"><span>${icone('star')} <b data-h="pontos">0</b></span><span>${icone('waves')} Onda <b data-h="onda">1</b></span><span>${icone('shield')} <b data-h="escudos">3</b> escudos</span></div>
     <div class="palco espaco"><canvas></canvas></div>`;
   const palco = el.querySelector('.palco'), cv = el.querySelector('canvas'), g = cv.getContext('2d');
   const FONTE = '600 17px "JetBrains Mono", ui-monospace, monospace';
@@ -193,9 +194,9 @@ const carro = cor => `<svg viewBox="0 0 64 32" width="64" height="32" aria-hidde
 function corrida(el, ctx) {
   let motor = null, raf, timer, acabou = false;
   el.innerHTML = `<div class="escolha"><h3>Escolha a dificuldade dos rivais</h3><div class="dif">
-    <button class="bt sec" data-d="0">🐢 Fácil<small>rivais a 12, 18 e 24 PPM</small></button>
-    <button class="bt sec" data-d="1">🐇 Médio<small>rivais a 20, 28 e 36 PPM</small></button>
-    <button class="bt sec" data-d="2">🐆 Difícil<small>rivais a 30, 42 e 55 PPM</small></button></div></div>`;
+    <button class="bt sec" data-d="0">${icone('turtle')} Fácil<small>rivais a 12, 18 e 24 PPM</small></button>
+    <button class="bt sec" data-d="1">${icone('rabbit')} Médio<small>rivais a 20, 28 e 36 PPM</small></button>
+    <button class="bt sec" data-d="2">${icone('flame')} Difícil<small>rivais a 30, 42 e 55 PPM</small></button></div></div>`;
   el.querySelectorAll('[data-d]').forEach(b => (b.onclick = () => iniciar(+b.dataset.d)));
 
   function iniciar(dif) {
@@ -205,7 +206,7 @@ function corrida(el, ctx) {
     const corredores = [{ nome: 'Você', cor: '#8b5cf6', voce: true }, ...ppms.map((p, i) => ({ nome: `Robô ${p} PPM`, cor: ['#f97316', '#06b6d4', '#ef4444'][i], ppm: p }))];
     el.innerHTML = `<div class="pista">${corredores.map((c, k) => `<div class="faixa${c.voce ? ' voce' : ''}"><span class="nome">${c.nome}</span><div class="carro" id="car${k}">${carro(c.cor)}</div><div class="chegada"></div></div>`).join('')}</div>
       <div class="contagem" id="cont">3</div>
-      <div class="hud"><span>⚡ <b data-h="ppm">0</b> PPM</span><span>🎯 <b data-h="prec">100</b>%</span></div>
+      <div class="hud"><span>${icone('zap')} <b data-h="ppm">0</b> PPM</span><span>${icone('target')} <b data-h="prec">100</b>%</span></div>
       <div class="texto corrida-texto" id="txt"></div>`;
     const txt = el.querySelector('#txt'), cont = el.querySelector('#cont');
     txt.textContent = texto;
@@ -239,7 +240,7 @@ function corrida(el, ctx) {
       acabou = true; cancelAnimationFrame(raf);
       const base = [400, 250, 150, 80][lugar - 1];
       const pontos = Math.round((base + s.ppm * 5) * (s.precisao / 100));
-      const medalha = ['🥇 1º lugar!', '🥈 2º lugar', '🥉 3º lugar', '4º lugar'][lugar - 1];
+      const medalha = ['1º lugar!', '2º lugar', '3º lugar', '4º lugar'][lugar - 1];
       cont.classList.remove('some'); cont.textContent = medalha;
       if (lugar === 1) som.sucesso();
       setTimeout(() => ctx.onFim({ ...s, pontos, detalhe: `${medalha} · ${s.ppm} PPM · ${s.precisao}% de precisão`, extra: lugar === 1 && dif === 2 ? { venceuDificil: true } : {} }), 1400);
@@ -251,8 +252,8 @@ function corrida(el, ctx) {
 /* ============================== Caça-Toupeiras ============================== */
 function toupeira(el, ctx) {
   const DUR = 45;
-  el.innerHTML = `<div class="hud"><span>⭐ <b data-h="pontos">0</b></span><span>⏱️ <b data-h="tempo">${DUR}</b>s</span><span>🎯 <b data-h="acertos">0</b> acertos</span>
-    <label class="chk"><input type="checkbox" id="ninja"> 🥷 Modo ninja</label></div>
+  el.innerHTML = `<div class="hud"><span>${icone('star')} <b data-h="pontos">0</b></span><span>${icone('timer')} <b data-h="tempo">${DUR}</b>s</span><span>${icone('target')} <b data-h="acertos">0</b> acertos</span>
+    <label class="chk"><input type="checkbox" id="ninja"> ${icone('eye-off')} Modo ninja</label></div>
     <div class="palco toupeira-palco"><div id="kb"></div></div>`;
   const kb = criarTeclado(el.querySelector('#kb')); kb.el.classList.add('kb-toupeira');
   el.querySelector('#ninja').onchange = e => kb.el.classList.toggle('sem-rotulos', e.target.checked);
@@ -306,7 +307,7 @@ function toupeira(el, ctx) {
 function teste(el, ctx) {
   const DUR = 60;
   const texto = embaralhar(ctx.frases).join(' ');
-  el.innerHTML = `<div class="hud"><span>⏱️ <b data-h="tempo">${DUR}</b>s</span><span>⚡ <b data-h="ppm">0</b> PPM</span><span>🎯 <b data-h="prec">100</b>%</span></div>
+  el.innerHTML = `<div class="hud"><span>${icone('timer')} <b data-h="tempo">${DUR}</b>s</span><span>${icone('zap')} <b data-h="ppm">0</b> PPM</span><span>${icone('target')} <b data-h="prec">100</b>%</span></div>
     <p class="instr">O cronômetro começa quando você digitar a primeira letra.</p>
     <div class="texto teste-texto" id="txt"></div>`;
   let acabou = false;
