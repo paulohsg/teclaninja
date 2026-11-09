@@ -1,6 +1,6 @@
 # ⌨️ TeclaNinja — Curso de Digitação ABNT2
 
-Curso de digitação online, em português, para adolescentes. Tem 35 lições, 5 jogos, conquistas, ranking da turma e um painel para o professor acompanhar o progresso de cada aluno.
+Curso de digitação online, em português, para adolescentes. Tem 87 lições, 5 jogos, conquistas, ranking da turma e um painel para o professor acompanhar o progresso de cada aluno.
 
 - **Alunos** entram com **escola, turma, primeiro nome, último sobrenome e senha** (não precisam de conta Google).
 - **Professores** entram com a conta Google.
@@ -21,10 +21,18 @@ Curso de digitação online, em português, para adolescentes. Tem 35 lições, 
 | ✨ Acentuação ABNT2 | ´ (á é í ó ú) · ~ (ã õ) · ^ (â ê ô) · ` e ç |
 | 🔢 Números e símbolos | 1–5 · 6–0 · @ # $ % & * ( ) - + = |
 | 🚀 Textos | 6 textos curiosos para ganhar velocidade |
+| 🧩 Combinações difíceis | NH, LH, CH · ÃO/ÕES · QU/GU · RR/SS · Ç com acentos · só mão esquerda · só mão direita |
+| 🗂️ Palavras temáticas | esportes, animais do Brasil, comidas, tecnologia, profissões, natureza, música, escola |
+| 💬 Frases do dia a dia | ditados, frases motivacionais, perguntas, diálogos com aspas, mensagens, pontuação completa |
+| 🧮 Números no mundo real | datas e horários, dinheiro, endereços, e-mails e sites, contas, receita |
+| 🔬 Textos: ciência e natureza | corpo humano, água, fotossíntese, Sistema Solar, dinossauros, animais |
+| 🇧🇷 Textos: Brasil e história | indígenas, Independência, abolição, Brasília e Goiânia, Cerrado, festas |
+| 🌍 Textos: tecnologia e mundo | computadores, segurança na internet, teclado, IA, Olimpíadas, espaço |
+| 🏆 Desafios finais | 6 textos longos (5 partes cada), com metas de 34 a 40 PPM |
 
 Em todas as lições o teclado na tela acende a próxima tecla e as mãos mostram qual dedo usar. O "modo ninja" esconde o teclado.
 
-**Jogos:** Chuva de Meteoros, Defesa Galáctica, Corrida Turbo, Caça-Toupeiras e Desafio 60 segundos. Os jogos usam só as letras que o aluno já aprendeu.
+**Jogos:** Chuva de Meteoros, Defesa Galáctica, Corrida Turbo, Caça-Toupeiras e Desafio 60 segundos. Os jogos usam só as letras que o aluno já aprendeu. As lições de palavras sorteiam palavras diferentes a cada tentativa.
 
 **Estrelas:** passa com 85% de precisão. ⭐⭐ = 92% + a meta de PPM da lição. ⭐⭐⭐ = 96% + 30% acima da meta.
 

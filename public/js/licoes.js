@@ -1,5 +1,5 @@
 // Conteúdo do curso: módulos, lições, palavras e frases.
-import { rnd } from './ui.js';
+import { rnd, embaralhar } from './ui.js';
 
 export const MODULOS = [
   { id: 'm0', nome: 'Primeiros passos', icone: '🧘', desc: 'Postura correta e posição das mãos no teclado.' },
@@ -178,6 +178,275 @@ export const LICOES = [
   ])
 ];
 
+// ===================== Módulos avançados (lições 36 a 87) =====================
+// Lições do tipo "palavras" sorteiam palavras da lista a cada tentativa.
+const P = (id, modulo, titulo, dica, meta, palavras) => ({ id, modulo, titulo, tipo: 'palavras', dica, meta, palavras: palavras.trim().split(/\s*,\s*/) });
+
+MODULOS.push(
+  { id: 'm8', nome: 'Combinações difíceis', icone: '🧩', desc: 'NH, LH, CH, ÃO, QU, RR, SS e Ç: as combinações mais traiçoeiras do português.' },
+  { id: 'm9', nome: 'Palavras temáticas', icone: '🗂️', desc: 'Vocabulário de esportes, animais, comidas, tecnologia e mais.' },
+  { id: 'm10', nome: 'Frases do dia a dia', icone: '💬', desc: 'Ditados, mensagens, diálogos e pontuação completa.' },
+  { id: 'm11', nome: 'Números no mundo real', icone: '🧮', desc: 'Datas, horários, preços, endereços, e-mails e contas.' },
+  { id: 'm12', nome: 'Textos: ciência e natureza', icone: '🔬', desc: 'Corpo humano, planetas, dinossauros e outros mistérios.' },
+  { id: 'm13', nome: 'Textos: Brasil e história', icone: '🇧🇷', desc: 'História do Brasil, Goiás, o Cerrado e a nossa cultura.' },
+  { id: 'm14', nome: 'Textos: tecnologia e mundo', icone: '🌍', desc: 'Computadores, internet, Olimpíadas e o espaço.' },
+  { id: 'm15', nome: 'Desafios finais', icone: '🏆', desc: 'Textos longos e metas altas. Só para quem é ninja de verdade!' }
+);
+
+LICOES.push(
+  // ---------- m8: Combinações difíceis ----------
+  P('l35', 'm8', 'NH, LH e CH', 'Essas duplas aparecem o tempo todo. Mantenha o ritmo: o H é do <b>indicador direito</b>, logo ao lado do J.', 24,
+    'banho, sonho, ninho, manhã, linha, vinho, caminho, montanha, unha, galinha, filho, olho, trabalho, palha, folha, espelho, joelho, milho, chave, chuva, chocolate, bicho, cachorro, chinelo, mochila, choro, achar'),
+  P('l36', 'm8', 'ÃO, ÕES e ÃES', 'O til fica ao lado do Ç (<b>mínimo direito</b>). Aperte o ~, solte e depois a vogal.', 22,
+    'pão, mão, coração, avião, limão, feijão, irmão, estação, emoção, canção, botões, lições, canções, corações, aviões, limões, mães, pães, cães, alemães, capitães, não, são, então'),
+  P('l37', 'm8', 'QU e GU', 'O Q é do <b>mínimo esquerdo</b> e quase sempre vem com U. Pratique a passagem rápida entre as duas mãos.', 24,
+    'queijo, quente, quilo, aquilo, pequeno, esquina, quatro, qual, quando, quase, quarto, máquina, parque, guerra, guitarra, foguete, águia, sangue, guarda, água, língua, seguir, alguém, preguiça'),
+  P('l38', 'm8', 'RR e SS', 'Letras dobradas pedem duas batidas rápidas com o mesmo dedo. Não segure a tecla: toque duas vezes.', 24,
+    'carro, terra, ferro, barro, correr, garrafa, cachorro, carroça, serra, torre, burro, horrível, massa, pássaro, osso, missão, nosso, sossego, assunto, passeio, pêssego, assim, isso, professora'),
+  P('l39', 'm8', 'Ç com acentos', 'Misture o Ç com as teclas de acento. Lembre: o acento vem antes da vogal.', 22,
+    'açúcar, maçã, coração, praça, cabeça, laço, açaí, criança, começo, dança, força, preço, março, almoço, cansaço, espaço, endereço, exceção, atenção, decoração, poção, caçula'),
+  P('l40', 'm8', 'Só a mão esquerda', 'Todas estas palavras usam só a <b>mão esquerda</b>. A mão direita descansa no J K L Ç e só o polegar direito pode ajudar no espaço.', 24,
+    'casa, carta, cesta, festa, garrafa, vaca, cera, data, sete, verde, beber, terra, faca, trave, barata, estrada, escada, arte, desfazer, gaveta, defesa, fase, vestes, reza, zebra, sacada, tarefa'),
+  P('l41', 'm8', 'Só a mão direita', 'Agora só a <b>mão direita</b>. A mão esquerda fica parada no A S D F.', 22,
+    'olho, milho, molho, limo, joio, punho, olimpo, junho, julho, mínimo, hum, pilhou, polui, nulo, pulo, mimo, ninho, piolho, um, oi, ui'),
+  P('l42', 'm8', 'Revisão das combinações', 'Tudo junto! Precisão primeiro: as combinações difíceis ficam fáceis com repetição.', 26,
+    'trabalho, chocolate, coração, máquina, guitarra, pássaro, açúcar, garrafa, montanha, estação, foguete, cachorro, espaço, sossego, caminho, pequeno, preguiça, atenção, chuva, milho, canções, terra, água, criança'),
+
+  // ---------- m9: Palavras temáticas ----------
+  P('l43', 'm9', 'Esportes', 'Vocabulário do mundo esportivo. Atenção aos acentos de vôlei, judô e pódio!', 26,
+    'futebol, vôlei, basquete, handebol, natação, atletismo, judô, skate, surfe, tênis, ciclismo, ginástica, xadrez, goleiro, atacante, zagueiro, árbitro, campeonato, medalha, pódio, torcida, estádio, treino, raquete, prancha'),
+  P('l44', 'm9', 'Animais do Brasil', 'Muitos nomes de animais têm hífen (-). Ele fica depois do 0, com o <b>mínimo direito</b>.', 24,
+    'onça-pintada, tamanduá, capivara, tucano, arara-azul, jacaré, boto-cor-de-rosa, mico-leão-dourado, lobo-guará, tatu-bola, preguiça, quati, sucuri, ema, seriema, anta, sagui, papagaio, sabiá, jabuti'),
+  P('l45', 'm9', 'Comidas brasileiras', 'Pequi, pamonha, galinhada... deu fome? Digite com calma e capriche nos acentos.', 26,
+    'arroz, feijão, pequi, pamonha, empadão, tapioca, açaí, brigadeiro, coxinha, pastel, farofa, mandioca, galinhada, pão de queijo, cuscuz, moqueca, churrasco, guaraná, acarajé, quindim, baião de dois, canjica'),
+  P('l46', 'm9', 'Tecnologia', 'Palavras do mundo digital. Você vai usar muitas delas no dia a dia!', 26,
+    'computador, teclado, mouse, monitor, internet, aplicativo, programa, arquivo, pasta, senha, navegador, servidor, robô, algoritmo, código, câmera, bateria, carregador, download, backup, tela, impressora, planilha, nuvem'),
+  P('l47', 'm9', 'Profissões', 'Que profissão você quer ter? Quase todas vão exigir digitar bem!', 26,
+    'professor, médica, engenheiro, enfermeira, advogado, programadora, motorista, cozinheiro, eletricista, jornalista, dentista, veterinária, bombeiro, arquiteta, agricultor, mecânico, cientista, piloto, designer, cabeleireira'),
+  P('l48', 'm9', 'Natureza', 'Biomas, paisagens e fenômenos da natureza. Olhos na tela!', 26,
+    'floresta, cachoeira, montanha, vulcão, oceano, deserto, savana, cerrado, pantanal, caatinga, rio, lago, nascente, árvore, semente, raiz, folhagem, orvalho, neblina, arco-íris, relâmpago, trovão, ventania'),
+  P('l49', 'm9', 'Música e arte', 'Instrumentos, ritmos e artes. Tente manter um ritmo constante, como numa música.', 26,
+    'violão, guitarra, bateria, sanfona, viola caipira, pandeiro, flauta, piano, melodia, ritmo, refrão, poesia, pintura, escultura, grafite, teatro, dança, cinema, fotografia, desenho, música, canção'),
+  P('l50', 'm9', 'Na escola', 'Tudo o que existe na escola. Você digita isso todo dia na vida real!', 28,
+    'caderno, lápis, borracha, apontador, mochila, estojo, régua, caneta, diretora, recreio, merenda, biblioteca, laboratório, quadra, prova, redação, matemática, geografia, história, ciências, português, inglês, educação física'),
+
+  // ---------- m10: Frases do dia a dia ----------
+  X('l51', 'm10', 'Ditados populares', 'Frases completas com vírgulas e pontos. Depois da vírgula e do ponto, sempre um espaço.', 26, [
+    'Água mole em pedra dura, tanto bate até que fura.',
+    'De grão em grão, a galinha enche o papo.',
+    'Mais vale um pássaro na mão do que dois voando.',
+    'Quem semeia vento colhe tempestade. A pressa é inimiga da perfeição.'
+  ]),
+  X('l52', 'm10', 'Frases motivacionais', 'Leia a frase inteira antes de começar. Isso ajuda a manter o ritmo.', 28, [
+    'Errar faz parte de aprender. Cada erro mostra o que treinar.',
+    'Você não precisa ser rápido para começar, mas precisa começar para ficar rápido.',
+    'Disciplina é fazer o que precisa ser feito, mesmo quando ninguém está olhando.',
+    'Pequenos avanços todos os dias viram grandes conquistas no fim do ano.'
+  ]),
+  X('l53', 'm10', 'Perguntas e exclamações', 'Interrogação: Shift + tecla / . Exclamação: Shift + 1. Use o Shift da mão oposta!', 26, [
+    'Que horas são? Já é hora do intervalo!',
+    'Você viu o jogo de ontem? Que golaço!',
+    'Quantos minutos faltam? Só cinco, ainda bem!',
+    'Posso ir ao banheiro, professor? Pode, mas volte logo!'
+  ], ['IntlRo', 'Digit1', 'ShiftLeft', 'ShiftRight']),
+  X('l54', 'm10', 'Diálogos com aspas', 'As aspas (") ficam no Shift da tecla ao lado do 1, com o <b>mínimo esquerdo</b>. Use o Shift direito.', 24, [
+    'Ela perguntou: "Você trouxe o caderno?"',
+    'Ele respondeu: "Trouxe, e também a calculadora."',
+    'A professora avisou: "A prova será na sexta-feira."',
+    'Todos disseram juntos: "Estamos prontos!"'
+  ], ['Backquote', 'ShiftRight']),
+  X('l55', 'm10', 'Mensagem para o grupo', 'Um recado de verdade, como no celular, mas digitado do jeito certo.', 28, [
+    'Oi, pessoal! A reunião do grupo será amanhã, às 14h, na biblioteca.',
+    'Não esqueçam de trazer o trabalho impresso e o pendrive com a apresentação.',
+    'Cada um vai falar por dois minutos. Ensaiem antes, combinado?',
+    'Qualquer dúvida, me chamem no grupo. Até amanhã!'
+  ]),
+  X('l56', 'm10', 'Pontuação completa', 'Vírgula, ponto e vírgula, dois-pontos e parênteses ( ). Os parênteses são Shift + 9 e Shift + 0.', 24, [
+    'Comprei três coisas: lápis, borracha e régua; esqueci a cola (de novo).',
+    'O Brasil tem cinco regiões: Norte, Nordeste, Centro-Oeste, Sudeste e Sul.',
+    'Goiás fica no Centro-Oeste; sua capital é Goiânia (desde 1937).',
+    'Atenção: leia o enunciado, faça um rascunho e só depois responda!'
+  ]),
+
+  // ---------- m11: Números no mundo real ----------
+  X('l57', 'm11', 'Datas e horários', 'A barra (/) fica ao lado do Shift direito. Se o seu teclado não tiver essa tecla, use AltGr + Q.', 18, [
+    'Hoje é 15/03/2026 e a aula começa às 7h30.',
+    'O ano tem 365 dias, 52 semanas e 12 meses.',
+    'Meu aniversário é em 28 de agosto; faltam 47 dias!',
+    'O intervalo dura 20 minutos: das 9h40 às 10h00.'
+  ], ['IntlRo', 'Digit1', 'Digit2', 'Digit3']),
+  X('l58', 'm11', 'Dinheiro e preços', 'O cifrão ($) é Shift + 4. Nos preços, a vírgula separa os centavos.', 18, [
+    'O lanche custa R$ 8,50 e o suco, R$ 4,75.',
+    'Paguei com R$ 20,00 e recebi R$ 6,75 de troco.',
+    'A camiseta de R$ 59,90 estava com 30% de desconto.',
+    'Juntei R$ 150,00 em três meses: R$ 50,00 por mês.'
+  ], ['Digit4', 'Digit5', 'Comma']),
+  X('l59', 'm11', 'Endereços e telefones', 'Números longos: olhe o texto em blocos pequenos, de 3 ou 4 algarismos.', 18, [
+    'Rua das Palmeiras, 123, Setor Central, Goiânia - GO.',
+    'CEP 74000-000. Telefone da escola: (62) 3000-0000.',
+    'Apartamento 402, bloco B, perto da praça.',
+    'Celular: (62) 90000-0000. Ligue depois das 18h.'
+  ], ['Digit9', 'Digit0', 'Minus']),
+  X('l60', 'm11', 'E-mails e sites', 'A arroba (@) é Shift + 2 e o sublinhado (_) é Shift + hífen.', 18, [
+    'Meu e-mail da escola é aluno.ninja@escola.edu.br.',
+    'Acesse www.exemplo.com.br/digitacao para treinar mais.',
+    'O arquivo se chama trabalho_final_v2.pdf.',
+    'Envie para professor_digitacao@exemplo.com até sexta.'
+  ], ['Digit2', 'Minus', 'Period']),
+  X('l61', 'm11', 'Contas de matemática', 'Mais (+) é Shift + =. Asterisco (*) é Shift + 8 e serve como sinal de vezes no computador.', 18, [
+    '2 + 2 = 4, 10 - 3 = 7 e 6 * 7 = 42.',
+    'A metade de 50 é 25 e o dobro de 25 é 50.',
+    '(3 + 5) * 2 = 16, mas 3 + 5 * 2 = 13.',
+    '15% de 200 é 30, e 10% de 90 é 9.'
+  ], ['Equal', 'Digit8', 'Minus']),
+  X('l62', 'm11', 'Receita de bolo', 'Uma receita de verdade, com números, frações e medidas.', 20, [
+    'Bolo de cenoura: 3 cenouras médias, 4 ovos e 1 xícara de óleo.',
+    'Bata no liquidificador e junte 2 xícaras de açúcar e 2 e 1/2 xícaras de farinha.',
+    'Acrescente 1 colher de sopa de fermento e misture devagar.',
+    'Asse em forno a 180 graus por 40 minutos. Rende 12 pedaços!'
+  ]),
+
+  // ---------- m12: Textos de ciência e natureza ----------
+  X('l63', 'm12', 'Texto: o corpo humano', 'Textos mais longos a partir daqui. Respire, relaxe os ombros e mantenha o ritmo.', 28, [
+    'O corpo humano adulto tem 206 ossos. O menor deles, o estribo, fica dentro do ouvido e mede cerca de três milímetros.',
+    'O coração bate mais de 100 mil vezes por dia, levando sangue para todas as partes do corpo.',
+    'A pele é o maior órgão do corpo e se renova o tempo todo: as células velhas caem e dão lugar a novas.'
+  ]),
+  X('l64', 'm12', 'Texto: a água do planeta', 'Postura: costas apoiadas e pulsos retos. Seus braços agradecem!', 28, [
+    'Cerca de 70% da superfície da Terra é coberta por água, mas só uma pequena parte é água doce.',
+    'A maior parte da água doce do planeta está congelada nas geleiras e nas calotas polares.',
+    'Economizar água é tarefa de todos: fechar a torneira ao escovar os dentes já faz diferença.'
+  ]),
+  X('l65', 'm12', 'Texto: fotossíntese', 'Palavras grandes? Divida em sílabas na cabeça: fo-tos-sín-te-se.', 28, [
+    'As plantas produzem o próprio alimento por meio da fotossíntese.',
+    'Elas usam a luz do Sol, a água e o gás carbônico do ar para fabricar açúcar e liberar oxigênio.',
+    'Grande parte do oxigênio que respiramos vem das algas e de pequenos seres que vivem nos oceanos.'
+  ]),
+  X('l66', 'm12', 'Texto: o Sistema Solar', 'Nomes próprios começam com maiúscula: use o Shift da mão oposta.', 28, [
+    'O Sistema Solar tem oito planetas: Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno.',
+    'Júpiter é o maior de todos; caberiam mais de mil planetas Terra dentro dele.',
+    'Marte é chamado de planeta vermelho por causa do óxido de ferro que cobre o seu solo.'
+  ]),
+  X('l67', 'm12', 'Texto: dinossauros', 'Números e texto juntos. Não olhe para o teclado nos números!', 28, [
+    'Os dinossauros viveram na Terra por mais de 160 milhões de anos.',
+    'Eles desapareceram há cerca de 66 milhões de anos, provavelmente após a queda de um enorme asteroide.',
+    'As aves de hoje são descendentes dos dinossauros. No Rio Grande do Sul foram encontrados fósseis de alguns dos dinossauros mais antigos do mundo.'
+  ]),
+  X('l68', 'm12', 'Texto: animais incríveis', 'Hífens no meio das palavras: beija-flor, tartaruga-de-couro.', 28, [
+    'O beija-flor consegue voar para trás e ficar parado no ar enquanto bebe o néctar das flores.',
+    'O guepardo é o animal terrestre mais rápido e pode passar de 100 quilômetros por hora em corridas curtas.',
+    'A tartaruga-de-couro, a maior tartaruga do mundo, consegue mergulhar a mais de mil metros de profundidade.'
+  ]),
+
+  // ---------- m13: Textos de Brasil e história ----------
+  X('l69', 'm13', 'Texto: os primeiros brasileiros', 'Datas e números grandes: digite um bloco de cada vez.', 30, [
+    'Em 22 de abril de 1500, a frota de Pedro Álvares Cabral chegou ao litoral da Bahia.',
+    'Muito antes disso, milhões de indígenas já viviam no território que hoje é o Brasil.',
+    'Até hoje, mais de 300 povos indígenas vivem no país e falam mais de 270 línguas diferentes.'
+  ]),
+  X('l70', 'm13', 'Texto: Independência e República', 'Atenção às datas com números e às maiúsculas.', 30, [
+    'A Independência do Brasil foi proclamada em 7 de setembro de 1822, às margens do riacho Ipiranga, em São Paulo.',
+    'Dom Pedro I tornou-se o primeiro imperador do país.',
+    'Mais tarde, em 15 de novembro de 1889, foi proclamada a República.'
+  ]),
+  X('l71', 'm13', 'Texto: o fim da escravidão', 'Um tema importante da nossa história. Leia com atenção enquanto digita.', 30, [
+    'A Lei Áurea, assinada em 13 de maio de 1888, aboliu a escravidão no Brasil.',
+    'O Brasil foi o último país das Américas a acabar com a escravidão.',
+    'Zumbi dos Palmares é lembrado como símbolo de resistência, e o dia 20 de novembro é o Dia da Consciência Negra.'
+  ]),
+  X('l72', 'm13', 'Texto: Brasília e Goiânia', 'Dois nomes famosos: Lúcio Costa e Oscar Niemeyer. Capriche nas maiúsculas!', 30, [
+    'Brasília foi inaugurada em 21 de abril de 1960 e se tornou a capital do Brasil.',
+    'O projeto da cidade foi feito pelo urbanista Lúcio Costa e pelo arquiteto Oscar Niemeyer.',
+    'Goiânia, capital de Goiás, foi planejada na década de 1930 e é conhecida por suas praças e áreas verdes.'
+  ]),
+  X('l73', 'm13', 'Texto: o Cerrado', 'O bioma onde você vive! Mantenha os dedos na fileira base entre as palavras.', 30, [
+    'O Cerrado é o segundo maior bioma do Brasil, atrás apenas da Amazônia.',
+    'Ele é chamado de berço das águas, porque nele nascem rios de grandes bacias do país.',
+    'O pequi, fruto típico do Cerrado, é muito usado na culinária goiana, como no arroz com pequi.'
+  ]),
+  X('l74', 'm13', 'Texto: festas e cultura', 'Muitos nomes com hífen e acento. Devagar e sempre!', 30, [
+    'O samba nasceu no Brasil e é reconhecido como patrimônio cultural do país.',
+    'Cada região tem suas festas: o frevo em Pernambuco, o boi-bumbá no Amazonas e as festas juninas em todo o país.',
+    'Em Goiás, as Cavalhadas de Pirenópolis e a Festa do Divino atraem visitantes de todo o Brasil.'
+  ]),
+
+  // ---------- m14: Textos de tecnologia e mundo ----------
+  X('l75', 'm14', 'Texto: os primeiros computadores', 'Meta mais alta agora. Velocidade com precisão!', 32, [
+    'Os primeiros computadores ocupavam salas inteiras e pesavam várias toneladas.',
+    'O ENIAC, apresentado em 1946, usava cerca de 18 mil válvulas e consumia muita energia.',
+    'Hoje, um celular comum é milhões de vezes mais rápido do que aqueles primeiros computadores.'
+  ]),
+  X('l76', 'm14', 'Texto: segurança na internet', 'Dicas que valem para a vida toda. Digite e guarde na memória!', 32, [
+    'Nunca compartilhe sua senha, nem com os amigos mais próximos.',
+    'Desconfie de mensagens que prometem prêmios fáceis ou pedem para clicar em links estranhos.',
+    'Antes de publicar algo, pense: eu diria isso pessoalmente? Na internet, o que é postado pode ficar para sempre.'
+  ]),
+  X('l77', 'm14', 'Texto: a história do teclado', 'Um texto sobre o próprio teclado que você está usando!', 32, [
+    'O teclado QWERTY recebeu esse nome por causa das seis primeiras letras da fileira de cima.',
+    'Ele foi criado no século XIX para as máquinas de escrever e continua sendo usado até hoje.',
+    'O padrão ABNT2, usado no Brasil, tem a tecla Ç e teclas próprias para os acentos da língua portuguesa.'
+  ]),
+  X('l78', 'm14', 'Texto: inteligência artificial', 'Tema do momento. Atenção às palavras longas!', 32, [
+    'A inteligência artificial é uma área da computação que cria programas capazes de aprender com dados.',
+    'Ela está presente em tradutores, assistentes de voz e nas recomendações de vídeos e músicas.',
+    'Usar bem essa tecnologia exige senso crítico: nem tudo o que a máquina responde está certo.'
+  ]),
+  X('l79', 'm14', 'Texto: as Olimpíadas', 'Datas, nomes de cidades e números. Mostre que você domina tudo!', 32, [
+    'Os Jogos Olímpicos da era moderna começaram em Atenas, na Grécia, em 1896.',
+    'O Rio de Janeiro sediou as Olimpíadas de 2016, as primeiras realizadas na América do Sul.',
+    'Os cinco anéis olímpicos representam a união dos continentes por meio do esporte.'
+  ]),
+  X('l80', 'm14', 'Texto: um brasileiro no espaço', 'Último texto deste módulo. Ritmo constante até o fim!', 32, [
+    'Marcos Pontes foi o primeiro astronauta brasileiro a ir ao espaço, em 2006.',
+    'Ele ficou alguns dias na Estação Espacial Internacional, que dá uma volta completa na Terra a cada 90 minutos, aproximadamente.',
+    'Por isso, os astronautas podem ver cerca de 16 nasceres do sol em um único dia.'
+  ]),
+
+  // ---------- m15: Desafios finais ----------
+  X('l81', 'm15', 'Desafio: a língua portuguesa', 'Desafio longo! Cinco partes seguidas. Se cansar, relaxe as mãos entre uma parte e outra.', 34, [
+    'A língua portuguesa é falada por mais de 250 milhões de pessoas em todo o mundo.',
+    'Ela é a língua oficial de nove países, entre eles Brasil, Portugal, Angola e Moçambique.',
+    'O português nasceu do latim, a língua falada pelos antigos romanos.',
+    'Muitas palavras que usamos vieram de línguas indígenas, como abacaxi, pipoca, capivara e Goiás.',
+    'Cada vez que você digita um texto, está usando uma língua com mais de 800 anos de história.'
+  ]),
+  X('l82', 'm15', 'Desafio: dicas para estudar', 'Cinco partes, meta alta. Mostre seu melhor!', 35, [
+    'Estudar um pouco todos os dias funciona melhor do que estudar muito na véspera da prova.',
+    'Tire o celular de perto: cada notificação rouba a sua atenção por vários minutos.',
+    'Explique a matéria em voz alta, como se estivesse ensinando alguém. É assim que se aprende de verdade.',
+    'Faça pausas curtas a cada 25 ou 30 minutos e beba água.',
+    'Dormir bem também é estudar: é durante o sono que o cérebro organiza o que aprendeu.'
+  ]),
+  X('l83', 'm15', 'Desafio: o futebol feminino', 'Nomes, números e acentos. Desafio completo!', 36, [
+    'Marta Vieira da Silva, nascida em Alagoas, foi eleita seis vezes a melhor jogadora do mundo.',
+    'Ela também é a maior artilheira da história das Copas do Mundo, somando homens e mulheres.',
+    'Formiga, outra lenda brasileira, disputou sete Copas do Mundo, um recorde.',
+    'O futebol feminino chegou a ser proibido no Brasil por quase 40 anos, até 1979.',
+    'Hoje, milhares de meninas jogam bola em escolas e clubes de todo o país.'
+  ]),
+  X('l84', 'm15', 'Desafio: a história da escrita', 'Uma longa viagem no tempo. Precisão de ninja!', 37, [
+    'A escrita foi inventada há mais de cinco mil anos, na Mesopotâmia.',
+    'Os primeiros textos eram marcas feitas em placas de argila molhada.',
+    'Os egípcios criaram os hieróglifos, que misturavam desenhos e sons.',
+    'Por volta de 1450, Gutenberg aperfeiçoou a prensa com tipos móveis, e os livros ficaram mais baratos.',
+    'Hoje escrevemos com o teclado, e quem domina essa ferramenta ganha tempo para pensar no que realmente importa.'
+  ]),
+  X('l85', 'm15', 'Desafio: carta para o futuro', 'Quase lá! Digite como se fosse uma carta para você mesmo daqui a dez anos.', 38, [
+    'Querido eu do futuro, hoje eu aprendi a digitar sem olhar para o teclado.',
+    'No começo foi difícil: eu errava o Ç, esquecia os acentos e olhava para baixo o tempo todo.',
+    'Mas treinei um pouco a cada aula, e cada estrela conquistada me deixou mais confiante.',
+    'Espero que você continue curioso, estudando e aprendendo coisas novas.',
+    'E nunca se esqueça: precisão primeiro, velocidade depois. Com carinho, eu do passado.'
+  ]),
+  X('l86', 'm15', 'Desafio final: grande mestre', 'A última lição do curso! Respire fundo, postura correta, olhos na tela. Você consegue!', 40, [
+    'Parabéns por chegar até aqui! Você completou dezenas de lições, jogos e desafios.',
+    'Agora seus dedos conhecem o caminho de cada tecla: da fileira base aos números, dos acentos aos símbolos.',
+    'Essa habilidade vai acompanhar você na escola, no trabalho e em qualquer projeto que imaginar.',
+    'Continue treinando nos jogos e no Desafio 60 segundos para ficar cada vez mais rápido.',
+    'Daqui para frente, o teclado não é mais um obstáculo: é uma ferramenta para as suas ideias. Até a próxima, ninja!'
+  ])
+);
+
 // Teclas conhecidas antes de cada lição de teclas/revisão.
 {
   let acum = '';
@@ -261,5 +530,11 @@ function exRevisao(lic) {
 /** Gera os exercícios da lição (lições de teclas variam a cada tentativa). */
 export function gerarExercicios(lic) {
   if (lic.exercicios) return lic.exercicios;
+  if (lic.tipo === 'palavras') {
+    // Percorre a lista embaralhada, sem repetir palavra até usar todas.
+    let fila = [];
+    const prox = () => { if (!fila.length) fila = embaralhar(lic.palavras); return fila.pop(); };
+    return Array.from({ length: 4 }, () => linha(prox, 58));
+  }
   return lic.tipo === 'revisao' ? exRevisao(lic) : exTeclas(lic);
 }

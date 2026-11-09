@@ -6,7 +6,8 @@ export const IDS_JOGOS = ['chuva', 'galaxia', 'corrida', 'toupeira', 'teste'];
 
 export const NIVEIS = [
   [0, 'Novato'], [120, 'Aprendiz'], [350, 'Digitador'], [700, 'Teclista Veloz'],
-  [1100, 'Ninja das Teclas'], [1700, 'Mestre Ninja'], [2500, 'Lenda do Teclado']
+  [1100, 'Ninja das Teclas'], [1700, 'Mestre Ninja'], [2500, 'Lenda do Teclado'],
+  [3600, 'Grão-Mestre'], [5000, 'Mito do Teclado']
 ];
 
 export function nivelDe(xp = 0) {
@@ -94,7 +95,14 @@ export const CONQUISTAS = [
   { id: 'podio', icone: '🏆', nome: 'Primeiro lugar', desc: 'Vença a Corrida Turbo no modo difícil.', ok: a => !!a.jogos.corrida?.venceuDificil },
   { id: 'dias3', icone: '🔥', nome: 'Constância', desc: 'Pratique 3 dias seguidos.', ok: a => sequencia(a.dias) >= 3 },
   { id: 'dias7', icone: '💎', nome: 'Imparável', desc: 'Pratique 7 dias seguidos.', ok: a => sequencia(a.dias) >= 7 },
-  { id: 'hora', icone: '⏳', nome: 'Maratonista', desc: 'Acumule 1 hora de prática.', ok: a => (a.stats.tempo || 0) >= 3600 }
+  { id: 'hora', icone: '⏳', nome: 'Maratonista', desc: 'Acumule 1 hora de prática.', ok: a => (a.stats.tempo || 0) >= 3600 },
+  { id: 'combos', icone: '🧩', nome: 'Quebra-cabeça', desc: 'Conclua o módulo Combinações difíceis.', ok: a => moduloOk(a, 'm8') },
+  { id: 'vocabulario', icone: '🗂️', nome: 'Dicionário ambulante', desc: 'Conclua o módulo Palavras temáticas.', ok: a => moduloOk(a, 'm9') },
+  { id: 'calculista', icone: '🧮', nome: 'Calculista', desc: 'Conclua o módulo Números no mundo real.', ok: a => moduloOk(a, 'm11') },
+  { id: 'cientista', icone: '🔬', nome: 'Cientista', desc: 'Conclua o módulo de textos de ciência e natureza.', ok: a => moduloOk(a, 'm12') },
+  { id: 'historiador', icone: '📜', nome: 'Historiador', desc: 'Conclua o módulo de textos de Brasil e história.', ok: a => moduloOk(a, 'm13') },
+  { id: 'licoes50', icone: '🎖️', nome: 'Veterano', desc: 'Conclua 50 lições.', ok: a => licoesFeitas(a) >= 50 },
+  { id: 'grao', icone: '👑', nome: 'Grande mestre', desc: 'Conclua o Desafio final.', ok: a => !!a.licoes.l86?.concluida }
 ];
 
 function aplicarStats(a, r) {
