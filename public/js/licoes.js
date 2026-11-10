@@ -32,9 +32,9 @@ falhas faca faz feio feira fila filas filha filhas fio fim fome forma frio fugir
 deles delas desde dica disse dois duas asa asas gala galas haja dada alga algas saga sagas ala alas faça faças salsa galha
 galhas ideia ideias sede seda lisa leia lei leis sela seja sejas deixa diga kiwi karate kart web wifi show yoga hobby
 cabeça laço moça poço graça praça peça força começo dança criança braço abraço onça aço quem quase quero quadro quatro
-quinta quente parque homem horta hino hotel bicho filho olho olhos galho malha jeito jardim jovem jovens loja lojas rato
+quinta quente parque homem horta hino hotel bicho filho olho olhos galho malha jeito jardim jovem jovens loja lojas
 tatu suco sorte torta ruim teste texto tarefa trilha trigo pressa presa prato pedra pelo pele peso pista pirata pipoca
-pote prova puxar quilo treino partida jogada golpe goleiro torcida equipe rodada placar medalha atleta eu tu oi sei lido
+pote prova puxar quilo treino partida jogada golpe goleiro torcida equipe rodada placar medalha atleta tu oi sei lido
 `.split(/\s+/).filter(Boolean);
 
 export const FRASES = [

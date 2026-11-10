@@ -18,23 +18,56 @@ service cloud.firestore {
     // Alunos entram com nome + turma + senha. O login vira um e-mail interno
     // "primeiro.ultimo.codigo@aluno.teclaninja.example", e o documento do aluno
     // usa "primeiro.ultimo.codigo" como identificador.
+    function aluno(id) {
+      return logado() && request.auth.token.email == id + '@aluno.teclaninja.example';
+    }
+    // Leitura do próprio documento (aluno, ou professor praticando com a conta Google).
     function dono(id) {
-      return logado() && (request.auth.uid == id
-        || request.auth.token.email == id + '@aluno.teclaninja.example');
+      return logado() && (request.auth.uid == id || aluno(id));
+    }
+    function meuDoc() {
+      return get(/databases/$(database)/documents/alunos/$(request.auth.token.email.split('@')[0])).data;
     }
 
-    // O professor pode pausar o curso (botão no painel). Sem o documento, está liberado.
-    function cursoLiberado() {
+    // Configurações do professor (documento config/curso). Sem o documento, tudo liberado.
+    function config(campo) {
       let curso = /databases/$(database)/documents/config/curso;
-      return !exists(curso) || get(curso).data.get('liberado', true) != false;
+      return !exists(curso) || get(curso).data.get(campo, true) != false;
+    }
+    function cursoLiberado() { return config('liberado'); }
+    function fotosLiberadas() { return config('fotosLiberadas'); }
+    function cadastroLiberado() { return config('cadastroLiberado'); }
+
+    // Nomes: só letras, espaço, hífen, apóstrofo e ponto (nada de símbolos ou textos longos).
+    function nomeValido(s) {
+      return s is string && s.matches("^[\\p{L}\\p{M}0-9' .-]{1,30}$");
+    }
+
+    // Primeiro acesso: o perfil precisa bater com o login e a turma precisa existir.
+    function perfilNovoValido(id) {
+      let d = request.resource.data;
+      return d.get('foto', '') == '' && d.get('fotoBloqueada', false) == false
+        && nomeValido(d.get('primeiro', '')) && nomeValido(d.get('ultimo', ''))
+        && d.get('nome', '') == d.primeiro + ' ' + d.ultimo
+        && d.get('turma', '') is string && d.turma.lower() == id.split('[.]')[2]
+        && exists(/databases/$(database)/documents/turmas/$(d.turma))
+        && d.get('xp', 0) == 0 && d.get('melhorPpm', 0) == 0;
+    }
+
+    // O aluno salva o progresso, mas não muda nome, turma nem escola,
+    // e o XP só sobe aos poucos (impede "trapaça" pelo navegador).
+    function progressoValido() {
+      let d = request.resource.data;
+      let a = resource.data;
+      let mudou = d.diff(a).affectedKeys();
+      return !mudou.hasAny(['uid', 'email', 'nome', 'primeiro', 'ultimo', 'escola', 'turma', 'turmaNome', 'criadoEm'])
+        && d.get('xp', 0) is int && d.get('xp', 0) >= a.get('xp', 0) && d.get('xp', 0) <= a.get('xp', 0) + 2000
+        && d.get('melhorPpm', 0) is number && d.get('melhorPpm', 0) <= 250
+        && d.get('moedas', 0) is int && d.get('moedas', 0) >= 0;
     }
 
     // Fotos de perfil: o professor pode desligar a troca para todos (config/curso.fotosLiberadas)
     // ou bloquear um aluno (campo fotoBloqueada). Só miniaturas JPEG pequenas são aceitas.
-    function fotosLiberadas() {
-      let curso = /databases/$(database)/documents/config/curso;
-      return !exists(curso) || get(curso).data.get('fotosLiberadas', true) != false;
-    }
     function fotoValida() {
       let f = request.resource.data.get('foto', '');
       return f == '' || (f is string && f.size() < 60000 && f.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+'));
@@ -46,30 +79,43 @@ service cloud.firestore {
     }
 
     // Progresso de cada aluno: só o próprio aluno e o professor leem.
-    // Com o curso pausado, o aluno não consegue salvar progresso (só criar o perfil no primeiro acesso).
+    // Com o curso pausado, o aluno não consegue salvar progresso.
+    // O primeiro acesso (criar o perfil) só funciona com o "Primeiro acesso" liberado no painel.
     match /alunos/{uid} {
       allow read: if dono(uid) || professor();
-      allow create: if professor() || (dono(uid) && request.resource.data.get('foto', '') == ''
-        && request.resource.data.get('fotoBloqueada', false) == false);
-      allow update: if professor() || (dono(uid) && cursoLiberado() && mudancaDeFotoPermitida());
+      allow create: if professor() || (aluno(uid) && cadastroLiberado() && perfilNovoValido(uid));
+      allow update: if professor() || (aluno(uid) && cursoLiberado() && mudancaDeFotoPermitida() && progressoValido());
       allow delete: if professor();
 
       match /sessoes/{id} {
         allow read: if dono(uid) || professor();
-        allow create: if dono(uid) && cursoLiberado();
+        allow create: if professor() || (aluno(uid) && cursoLiberado());
         allow delete: if professor();
       }
     }
 
-    // Ranking: só nome, nível e XP (visível para quem está logado).
-    // A foto no ranking precisa ser a mesma do perfil (assim o aluno não escapa de uma remoção).
+    // Ranking: cópia resumida do perfil. Cada aluno só vê o ranking da própria turma,
+    // e os números precisam ser iguais aos do perfil (nome curto, XP, foto, turma).
+    function rankingValido(uid) {
+      let r = request.resource.data;
+      let a = get(/databases/$(database)/documents/alunos/$(uid)).data;
+      return r.keys().hasOnly(['uid', 'nome', 'foto', 'turma', 'xp', 'nivel', 'melhorPpm', 'licoes', 'avatar'])
+        && r.get('uid', '') == uid && r.get('turma', '') == a.get('turma', '-')
+        && r.get('xp', 0) == a.get('xp', 0) && r.get('melhorPpm', 0) == a.get('melhorPpm', 0)
+        && r.get('foto', '') == a.get('foto', '')
+        && r.get('nome', '') is string && r.nome.split(' ')[0] == a.get('primeiro', '-')
+        && (r.nome == a.primeiro || r.nome.matches('^[^ ]+ [^ ][.]$'))
+        && r.get('nivel', 1) is int && r.get('nivel', 1) >= 1 && r.get('nivel', 1) <= 20
+        && r.get('licoes', 0) is int && r.get('licoes', 0) >= 0 && r.get('licoes', 0) <= 200
+        && r.get('avatar', {}) is map && r.get('avatar', {}).size() <= 8;
+    }
     match /ranking/{uid} {
-      allow read: if logado();
-      allow write: if professor() || (dono(uid) && request.resource.data.get('foto', '')
-        == get(/databases/$(database)/documents/alunos/$(uid)).data.get('foto', ''));
+      allow read: if professor() || (logado() && resource.data.turma == meuDoc().turma);
+      allow create, update: if professor() || (aluno(uid) && rankingValido(uid));
+      allow delete: if professor();
     }
 
-    // Liberação do curso: todos leem; só o professor muda.
+    // Configurações do curso: todos leem (a tela de login precisa); só o professor muda.
     match /config/{doc} {
       allow read: if true;
       allow write: if professor();

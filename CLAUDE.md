@@ -14,6 +14,8 @@ nomes de menus). O `README.md` é o guia para humanos; este arquivo é o context
   último sobrenome + senha. Professores entram com Google.
 - Alunos de Goiás: textos e exemplos podem citar Goiás, Goiânia, Cerrado, pequi etc.
 - O professor pausa o curso fora da aula (botão no painel) para os alunos não fazerem em casa pelo celular.
+- Os alunos jogam muito Roblox: jogos e avatar têm estética de blocos, mas com desenho e nomes próprios
+  (nunca usar nome, logo, personagens ou arte de jogos existentes).
 
 ## Stack e estrutura
 
@@ -25,30 +27,32 @@ Backend: **Firebase** (Auth + Firestore), SDK 10.12.2 importado dinamicamente de
 public/index.html, professor.html   páginas (curso do aluno / painel do professor)
 public/css/style.css                todo o CSS (tokens claro/escuro no topo; blocos novos vão no FIM)
 public/js/config.js                 config do Firebase + PROFESSORES (editado pelo professor no GitHub)
-public/js/app.js                    telas do aluno (login, início, lição, jogos, conquistas, ranking, guia, pausa, foto)
-public/js/professor.js              painel (alunos, detalhe, turmas, fotos, CSV, botão pausar, dados de exemplo)
+public/js/app.js                    telas do aluno (login, início, lição, jogos, avatar/loja, conquistas, ranking, guia, pausa, foto)
+public/js/professor.js              painel (alunos, detalhe, turmas, primeiro acesso, fotos, CSV, botão pausar, dados de exemplo)
 public/js/store.js                  camada de dados: Firebase ou demo (login, alunos, sessões, turmas, ranking, config, fotos)
 public/js/licoes.js                 MODULOS (16) e LICOES (87: l00–l86), palavras, frases, geradores de exercícios
-public/js/progresso.js              XP, níveis, estrelas, conquistas, liberação de lições, dados do ranking
+public/js/progresso.js              XP, níveis, estrelas, moedas, conquistas, liberação de lições, soProgresso(), dados do ranking
+public/js/avatar.js                 avatar de blocos: CATEGORIAS, ITENS (preço/requisito), formas(), avatarSvg(), desenharAvatar()
 public/js/motor.js                  motor de digitação (PPM, precisão, dicas de dedo)
 public/js/entrada.js                captura de texto por <textarea> invisível (ver "Acentos")
 public/js/teclado.js                layout ABNT2, dedo de cada tecla, desenho do teclado e das mãos (SVG)
-public/js/jogos.js                  5 jogos: chuva, galaxia, corrida, toupeira, teste
+public/js/jogos.js                  6 jogos: parkour (novo, usa o avatar), chuva, galaxia, corrida, toupeira, teste
 public/js/icones.js                 ícones Lucide (ISC) embutidos; icone('nome', 'classe')
 public/js/ui.js                     $, esc, toast(msg, tipo, icone), modal, sons, tema, confete, reduzirImagem
 firestore.rules                     regras de segurança (o professor cola no console do Firebase)
-.github/workflows/pages.yml         publica public/ no GitHub Pages (conta do GitHub com pendência de cobrança: Actions bloqueado)
 ```
 
 ## Modelo de dados (Firestore)
 
 - `alunos/{id}` — id do aluno = `primeiro.ultimo.codigoturma` (slug, sem acento). Professor (Google) usa o uid.
   Campos: nome, primeiro, ultimo, escola, turma (código), turmaNome, xp, melhorPpm, licoes{lXX:{estrelas,ppm,precisao,tentativas,concluida}},
-  jogos{}, conquistas{}, dias[], stats{tempo,acertos,erros,errosTecla{u<codepoint>:n}}, foto (data URL JPEG), fotoBloqueada.
-- `alunos/{id}/sessoes/*` — histórico de lições/jogos (gráfico do painel).
-- `ranking/{id}` — cópia pública resumida (nome curto, foto, turma, xp, nível, melhorPpm, lições).
+  jogos{id:{recorde,partidas,...extras}}, conquistas{}, dias[], stats{tempo,acertos,erros,errosTecla{u<codepoint>:n}},
+  moedas, avatar{pele,rosto,chapeu,camisa,calca,costas} (ids de ITENS), itens[] (comprados), foto (data URL JPEG), fotoBloqueada.
+  Extras de jogos: `parkour.estagio` (maior estágio), `galaxia.chefao`, `corrida.venceuDificil` (números só sobem, marcas não voltam a falso).
+- `alunos/{id}/sessoes/{sid}` — histórico de lições/jogos (gráfico do painel). `sid` é gerado no aparelho (reenvio não duplica).
+- `ranking/{id}` — cópia resumida (uid, nome curto, foto, turma, xp, nivel, melhorPpm, licoes, avatar). Só esses campos.
 - `turmas/{codigo}` — {codigo, nome, escola}. Leitura pública (a tela de login lista escolas/turmas).
-- `config/curso` — {liberado, fotosLiberadas}. Sem documento = tudo liberado.
+- `config/curso` — {liberado, fotosLiberadas, cadastroLiberado}. Sem documento (ou sem o campo) = liberado.
 - Login do aluno = Firebase e-mail/senha com e-mail interno `id@aluno.teclaninja.example` e senha `senha + '#TeclaNinja'`
   (Firebase exige 6+ caracteres; o aluno usa 4+). "Esqueceu a senha": professor exclui a conta no console
   (Authentication → Usuários) e o aluno refaz o "Primeiro acesso"; o progresso fica (o doc usa o mesmo id).
@@ -60,10 +64,29 @@ firestore.rules                     regras de segurança (o professor cola no co
 - Curso pausado: aluno vê a tela "O curso está pausado" em tempo real; as regras do Firestore negam salvar progresso
   (`cursoLiberado()`), mas permitem criar o perfil no primeiro acesso.
 - Fotos: aluno troca pelo menu; professor troca/remove/bloqueia na aba Fotos e pode desligar para todos.
-  **O app do aluno nunca grava `foto`/`fotoBloqueada` junto com o progresso** (`semFoto()` em app.js) — senão
-  desfaz a troca feita pelo professor. As regras exigem que a foto do ranking seja igual à do perfil.
+  **O aluno só grava `soProgresso(a)`** (progresso.js: xp, melhorPpm, licoes, jogos, conquistas, dias, stats, moedas,
+  avatar, itens, ultimoAcesso) — nunca foto, nome, turma ou escola. Senão desfaz a troca feita pelo professor e as
+  regras recusam. O perfil completo só é gravado no primeiro acesso (create).
+- Primeiro acesso: botão na aba Turmas (`config/curso.cadastroLiberado`). Fechado = regras negam criar `alunos/{id}`;
+  o app checa antes de criar a conta no Auth (`lerConfig()`), para não sobrar login sem perfil.
+- Salvamento com fila (app.js `salvarTudo`/`enviarPendentes`): progresso + sessões vão para `localStorage`
+  (`tn_pend_<uid>`) e são enviados com prazo de 8 s (o SDK do Firestore não dá erro offline, só espera).
+  Reenvia no evento `online` e no próximo login. Sessão já enviada dá permission-denied no reenvio e é descartada.
+- Moedas: lição = 2 + 5 por estrela nova; jogo = até 40 pelos pontos + até 60 coletadas no jogo (`r.moedas`).
+  Só compram itens visuais do avatar. Itens com `req` (nível/conquista) não se compram.
 - Escrever no ranking nunca pode derrubar a sessão: sempre `.catch()` silencioso.
 - Lições do tipo `palavras` sorteiam palavras sem repetir; `teclas`/`revisao` geram exercícios; `texto`/`teoria` têm `exercicios` fixos.
+
+## Regras do Firestore (o que já está protegido — testar se mexer)
+
+- Ranking: leitura só da própria turma (`resource.data.turma == meuDoc().turma`; a consulta precisa ter
+  `where('turma','==',...)`) ou professor. Escrita: campos fixos, xp/melhorPpm/foto/turma iguais ao perfil,
+  `nome` = primeiro nome do perfil + inicial (`Ana S.`).
+- Perfil (create pelo aluno): só com cadastro liberado, nome só com letras, turma = código do id e existente, xp 0.
+- Perfil (update pelo aluno): curso liberado, não muda nome/turma/escola/uid/email, xp inteiro que só sobe (até +2000
+  por gravação), melhorPpm ≤ 250, moedas ≥ 0, regras de foto.
+- `aluno(id)` = e-mail interno `id@aluno.teclaninja.example`. Conta Google que não é professor não grava nada.
+- Testes de regras: script com o SDK `firebase` no Node contra o emulador (tentativas válidas e de burla).
 
 ## Acentos e Chromebook (bug já corrigido — não voltar atrás)
 
@@ -85,14 +108,16 @@ Colar (`insertFromPaste`) é ignorado. **Nunca** voltar a ler letras só por `ke
   alunos que já concluíram continuam na próxima. A conquista "Formado!" depende de `LICOES.length`.
 - Commits em português, autor "Paulo" (o e-mail do professor já está em `config.js`). Trabalhar direto na `main`
   (o site é publicado a partir dela). Não versionar `teclaninja.zip`.
+- Jogos: cada jogo é `fn(el, ctx)` → `{ destruir }` e chama `ctx.onFim({pontos, acertos, erros, errosTecla, seg,
+  moedas?, detalhe, extra?})`. `ctx.avatar` traz o avatar do aluno. O palco precisa caber em 1366×650
+  (`.jogo-pg .palco` usa `calc(100vh - 190px)`). Itens novos do avatar: acrescentar em `ITENS` e desenhar em `formas()`.
 
 ## Depois de mudar algo
 
 - Mudou `firestore.rules`? **Avise o professor** para copiar o arquivo e publicar em Firestore Database → Regras.
 - Mudou só `public/`? Basta enviar para a `main`; peça para os alunos recarregarem com Ctrl+Shift+R.
-- Publicação: GitHub Pages está configurado, mas o GitHub Actions da conta do professor estava bloqueado por
-  pendência de cobrança; a alternativa sugerida foi Netlify ligado ao repositório (publish directory `public`).
-  Confirme com o professor onde o site está hospedado antes de falar de deploy.
+- Publicação: **Netlify** (https://teclaninja.netlify.app), ligado ao repositório, publica a pasta `public` a cada
+  envio para a `main`. O workflow do GitHub Pages foi removido (o Actions da conta estava bloqueado).
 
 ## Como testar
 
@@ -109,5 +134,5 @@ Não há suíte de testes no repositório; testamos com **Playwright** (já inst
    Professor no emulador: `signInWithCredential(GoogleAuthProvider.credential('{"sub":"p1","email":"<e-mail de PROFESSORES>","email_verified":true}'))`.
 4. Digitação: `page.keyboard.type(ch)` serve para letras/ç; para acentos simule o Chromebook via CDP:
    `Input.imeSetComposition({text:'´'})` e depois `Input.insertText({text:'á'})`.
-5. Sempre conferir: lições com acento (l22–l26), os 5 jogos, painel em 1366/1280/1024 px sem texto cortado,
+5. Sempre conferir: lições com acento (l22–l26), os 6 jogos e a tela Avatar, painel em 1366/1280/1024 px sem texto cortado,
    celular 390 px sem rolagem horizontal, modo escuro, e — se mexer em regras — tentativas de burla devem dar `permission-denied`.

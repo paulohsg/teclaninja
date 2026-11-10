@@ -1,6 +1,6 @@
 // =====================================================================
 //  CONFIGURAÇÃO DO TECLANINJA
-//  Siga o passo a passo do arquivo LEIA-ME.md para preencher estes dados.
+//  Siga o passo a passo do arquivo README.md para preencher estes dados.
 //  Enquanto o firebaseConfig não for preenchido, o site funciona em
 //  "modo demonstração" (dados salvos apenas no navegador).
 //  Alunos entram com nome + turma + senha; professores, com a conta Google.

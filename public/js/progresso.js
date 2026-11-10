@@ -2,7 +2,7 @@
 import { LICOES } from './licoes.js';
 import { hoje } from './ui.js';
 
-export const IDS_JOGOS = ['chuva', 'galaxia', 'corrida', 'toupeira', 'teste'];
+export const IDS_JOGOS = ['parkour', 'chuva', 'galaxia', 'corrida', 'toupeira', 'teste'];
 
 export const NIVEIS = [
   [0, 'Novato'], [120, 'Aprendiz'], [350, 'Digitador'], [700, 'Teclista Veloz'],
@@ -22,7 +22,7 @@ export function novoAluno(u) {
     uid: u.uid, nome: u.nome || '', email: u.email || '', foto: u.foto || '',
     primeiro: u.primeiro || '', ultimo: u.ultimo || '', escola: u.escola || '', turma: u.turma || '', turmaNome: u.turmaNome || '',
     criadoEm: Date.now(), ultimoAcesso: Date.now(), xp: 0, melhorPpm: 0,
-    licoes: {}, jogos: {}, conquistas: {}, dias: [],
+    licoes: {}, jogos: {}, conquistas: {}, dias: [], moedas: 0, avatar: {}, itens: [],
     stats: { tempo: 0, acertos: 0, erros: 0, errosTecla: {} }
   };
 }
@@ -30,8 +30,14 @@ export function novoAluno(u) {
 /** Garante que documentos antigos/incompletos tenham todos os campos. */
 export function normalizar(a) {
   const base = novoAluno(a);
-  return { ...base, ...a, stats: { ...base.stats, ...(a.stats || {}) }, licoes: a.licoes || {}, jogos: a.jogos || {}, conquistas: a.conquistas || {}, dias: a.dias || [] };
+  return { ...base, ...a, stats: { ...base.stats, ...(a.stats || {}) }, licoes: a.licoes || {}, jogos: a.jogos || {}, conquistas: a.conquistas || {}, dias: a.dias || [],
+    moedas: a.moedas || 0, avatar: a.avatar || {}, itens: a.itens || [] };
 }
+
+// Campos que o próprio aluno grava. Nome, turma, escola e foto ficam de fora:
+// só mudam no primeiro acesso ou pelo professor (as regras do banco também garantem isso).
+const CAMPOS_PROGRESSO = ['xp', 'melhorPpm', 'licoes', 'jogos', 'conquistas', 'dias', 'stats', 'moedas', 'avatar', 'itens', 'ultimoAcesso'];
+export const soProgresso = a => Object.fromEntries(CAMPOS_PROGRESSO.filter(k => a[k] !== undefined).map(k => [k, a[k]]));
 
 // Chaves seguras para o Firestore (caracteres como "." não podem ser nomes de campo).
 export const codTecla = ch => 'u' + ch.codePointAt(0);
@@ -102,7 +108,10 @@ export const CONQUISTAS = [
   { id: 'cientista', icone: 'microscope', nome: 'Cientista', desc: 'Conclua o módulo de textos de ciência e natureza.', ok: a => moduloOk(a, 'm12') },
   { id: 'historiador', icone: 'scroll-text', nome: 'Historiador', desc: 'Conclua o módulo de textos de Brasil e história.', ok: a => moduloOk(a, 'm13') },
   { id: 'licoes50', icone: 'medal', nome: 'Veterano', desc: 'Conclua 50 lições.', ok: a => licoesFeitas(a) >= 50 },
-  { id: 'grao', icone: 'crown', nome: 'Grande mestre', desc: 'Conclua o Desafio final.', ok: a => !!a.licoes.l86?.concluida }
+  { id: 'grao', icone: 'crown', nome: 'Grande mestre', desc: 'Conclua o Desafio final.', ok: a => !!a.licoes.l86?.concluida },
+  { id: 'parkour', icone: 'flag-triangle-right', nome: 'Mestre do parkour', desc: 'Chegue ao estágio 10 no Parkour Ninja.', ok: a => (a.jogos.parkour?.estagio || 0) >= 10 },
+  { id: 'chefao', icone: 'swords', nome: 'Caçador de chefões', desc: 'Derrote a Nave-mãe na Defesa Galáctica.', ok: a => !!a.jogos.galaxia?.chefao },
+  { id: 'estilo', icone: 'shirt', nome: 'Estiloso', desc: 'Compre um item na loja do avatar.', ok: a => (a.itens || []).length > 0 }
 ];
 
 function aplicarStats(a, r) {
@@ -140,23 +149,32 @@ export function registrarLicao(a, lic, r) {
     concluida: !!ant.concluida || est > 0, data: Date.now()
   };
   aplicarStats(a, r);
+  // Moedas para a loja do avatar: 2 por tentativa + 5 por estrela nova.
+  const moedas = 2 + 5 * Math.max(0, est - (ant.estrelas || 0));
+  a.moedas = (a.moedas || 0) + moedas;
   if (lic.tipo !== 'teoria' && r.precisao >= 90 && (r.acertos || 0) >= 60) a.melhorPpm = Math.max(a.melhorPpm || 0, r.ppm);
-  return { estrelas: est, anterior: ant.estrelas || 0, ...finalizar(a, xp) };
+  return { estrelas: est, anterior: ant.estrelas || 0, moedas, ...finalizar(a, xp) };
 }
 
 export function registrarJogo(a, jogoId, r) {
   const j = a.jogos[jogoId] || { recorde: 0, partidas: 0 };
   const recorde = r.pontos > (j.recorde || 0);
-  a.jogos[jogoId] = { ...j, recorde: Math.max(r.pontos, j.recorde || 0), partidas: (j.partidas || 0) + 1, data: Date.now(), ...(r.extra || {}) };
+  // Recordes extras (ex.: maior estágio) só sobem; marcas verdadeiras (ex.: venceu no difícil) nunca voltam a falso.
+  const extra = {};
+  for (const [k, v] of Object.entries(r.extra || {})) extra[k] = typeof v === 'number' ? Math.max(v, j[k] || 0) : (v || j[k] || false);
+  a.jogos[jogoId] = { ...j, recorde: Math.max(r.pontos, j.recorde || 0), partidas: (j.partidas || 0) + 1, data: Date.now(), ...extra };
+  // Moedas: pelos pontos (até 40) + as que o aluno pegou dentro do jogo.
+  const moedas = Math.min(40, 1 + Math.floor(r.pontos / 80)) + Math.min(60, Math.max(0, Math.floor(r.moedas || 0)));
+  a.moedas = (a.moedas || 0) + moedas;
   aplicarStats(a, r);
   if (r.ppm && r.precisao >= 90 && (r.acertos || 0) >= 60) a.melhorPpm = Math.max(a.melhorPpm || 0, r.ppm);
   const xp = Math.min(40, 3 + Math.floor(r.pontos / 40));
-  return { recorde, ...finalizar(a, xp) };
+  return { recorde, moedas, ...finalizar(a, xp) };
 }
 
 /** Dados públicos do aluno para o ranking da turma. */
 export function dadosRanking(a) {
   const partes = String(a.nome || '').trim().split(/\s+/);
   const nome = partes[0] + (partes[1] ? ' ' + partes[1][0] + '.' : '');
-  return { nome, foto: a.foto || '', turma: a.turma || '', xp: a.xp || 0, nivel: nivelDe(a.xp).n, melhorPpm: a.melhorPpm || 0, licoes: licoesFeitas(a) };
+  return { nome, foto: a.foto || '', turma: a.turma || '', xp: a.xp || 0, nivel: nivelDe(a.xp).n, melhorPpm: a.melhorPpm || 0, licoes: licoesFeitas(a), avatar: a.avatar || {} };
 }

@@ -1,11 +1,12 @@
 // Aplicativo do aluno.
-import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor, observarCurso, observarAluno, salvarFoto } from './store.js';
+import { MODO, observarLogin, cadastrarAluno, entrarAluno, perfilPendente, sair, lerAluno, salvarAluno, registrarSessao, lerTurma, listarTurmas, salvarRanking, lerRanking, ehProfessor, observarCurso, observarAluno, salvarFoto, lerConfig } from './store.js';
 import { LICOES, MODULOS, FRASES, gerarExercicios, palavrasPara } from './licoes.js';
 import { criarTeclado, criarMaos, passos, codeDe } from './teclado.js';
 import { Motor } from './motor.js';
 import { icone } from './icones.js';
 import { JOGOS, iniciarJogo } from './jogos.js';
-import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUISTAS, sequencia, teclasAprendidas, licaoLiberada, meta3, decTecla, dadosRanking, precisaoGeral, licoesFeitas, totalEstrelas } from './progresso.js';
+import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUISTAS, sequencia, teclasAprendidas, licaoLiberada, meta3, decTecla, dadosRanking, precisaoGeral, licoesFeitas, totalEstrelas, soProgresso } from './progresso.js';
+import { CATEGORIAS, ITENS, avatarDe, avatarSvg, situacao } from './avatar.js';
 import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd, modal, reduzirImagem } from './ui.js';
 
 const app = $('#app');
@@ -13,6 +14,8 @@ const S = { user: null, aluno: null, limpeza: null, liberado: true, fotosLiberad
 
 aplicarTema();
 addEventListener('hashchange', rotear);
+// Resultados guardados sem internet são enviados quando a conexão volta.
+addEventListener('online', () => { if (S.aluno && S.liberado) enviarPendentes(); });
 observarLogin(async user => {
   if (!user) {
     S.pararCurso?.(); S.pararAluno?.(); S.pararCurso = S.pararAluno = null;
@@ -25,25 +28,31 @@ observarLogin(async user => {
     return telaLogin('Esta conta não é de professor. Alunos entram com nome, turma e senha.');
   }
   S.user = user;
+  let novo = false;
   try {
     // O professor pode pausar o curso; professores nunca ficam bloqueados.
     S.liberado = user.aluno ? await acompanharCurso() : true;
     let a = await lerAluno(user.uid);
-    const novo = !a;
+    novo = !a;
     if (!a) a = novoAluno(perfilPendente(user.uid) || (user.aluno ? await perfilDaChave(user) : user));
     a = normalizar(a);
+    // Progresso que ficou guardado neste computador por falta de internet.
+    const pend = lerPend(user.uid);
+    if (!novo && pend?.progresso && (pend.progresso.xp || 0) >= (a.xp || 0)) Object.assign(a, pend.progresso);
     if (!user.aluno) Object.assign(a, { nome: user.nome, email: user.email, foto: user.foto || a.foto });
     a.uid = user.uid; a.email = user.email; a.ultimoAcesso = Date.now();
     S.aluno = a;
     // Com o curso pausado, o banco só aceita criar o perfil de quem acabou de se cadastrar.
     if (novo || S.liberado) {
-      await salvarAluno(user.uid, novo || !user.aluno ? a : semFoto(a));
+      await salvarAluno(user.uid, novo || !user.aluno ? a : soProgresso(a));
       if (a.turma) await salvarRanking(user.uid, dadosRanking(a)).catch(e => console.warn('ranking:', e.code || e));
     }
   } catch (e) {
     console.error(e);
     await sair().catch(() => {});
-    return telaLogin('Não foi possível carregar seus dados. Verifique a internet e tente de novo.');
+    return telaLogin(novo && e?.code === 'permission-denied'
+      ? 'Não encontramos seu cadastro e o "Primeiro acesso" está fechado. Peça ao professor para liberar.'
+      : 'Não foi possível carregar seus dados. Verifique a internet e tente de novo.');
   }
   if (user.aluno) {
     S.pararAluno?.();
@@ -55,6 +64,7 @@ observarLogin(async user => {
     }).then(f => { S.pararAluno = f; }).catch(e => console.warn(e));
   }
   montarShell(); rotear();
+  if (S.liberado) enviarPendentes();
 }).catch(e => {
   console.error(e);
   telaLogin('Não foi possível conectar ao servidor. Verifique a internet e recarregue a página.');
@@ -77,8 +87,35 @@ function acompanharCurso() {
   });
 }
 
-/** O aluno nunca grava a foto junto com o progresso (assim não desfaz uma troca feita pelo professor). */
-function semFoto(a) { const { foto, fotoBloqueada, ...resto } = a; return resto; }
+/* ------------- Salvamento com fila (resultados não se perdem sem internet) ------------- */
+const chavePend = uid => 'tn_pend_' + uid;
+function lerPend(uid) { try { return JSON.parse(ler(chavePend(uid), '') || 'null'); } catch { return null; } }
+function gravarPend(uid, p) { gravar(chavePend(uid), p ? JSON.stringify(p) : ''); }
+
+let fila = Promise.resolve(true);
+// Sem internet o Firebase não dá erro: fica esperando. Depois de 8 s consideramos "sem conexão".
+const comPrazo = p => Promise.race([p, new Promise((_, falha) => setTimeout(() => falha(Object.assign(new Error('sem conexão'), { code: 'timeout' })), 8000))]);
+/** Envia o que estiver guardado (progresso + sessões). Devolve true se tudo foi enviado. */
+function enviarPendentes() {
+  const enviar = async () => {
+    const a = S.aluno, p = a && lerPend(a.uid);
+    if (!p) return true;
+    try {
+      // O aluno nunca grava foto, nome ou turma junto com o progresso (soProgresso),
+      // assim não desfaz uma troca feita pelo professor.
+      await comPrazo(salvarAluno(a.uid, p.progresso));
+      while (p.sessoes.length) {
+        try { await comPrazo(registrarSessao(a.uid, p.sessoes[0])); }
+        catch (e) { if (e?.code !== 'permission-denied') throw e; } // já tinha sido enviada antes
+        p.sessoes.shift(); gravarPend(a.uid, p);
+      }
+      if (lerPend(a.uid)?.progresso?.xp === p.progresso.xp) gravarPend(a.uid, null);
+      if (a.turma) await salvarRanking(a.uid, dadosRanking(a)).catch(e => console.warn('ranking:', e.code || e));
+      return true;
+    } catch (e) { console.warn('Não foi possível enviar agora:', e.code || e); S.erroEnvio = e?.code; return false; }
+  };
+  return (fila = fila.then(enviar, enviar));
+}
 
 /** Reconstrói o perfil a partir do login (caso o cadastro tenha sido interrompido). */
 async function perfilDaChave(user) {
@@ -90,6 +127,7 @@ async function perfilDaChave(user) {
 }
 
 /* ================================ Login ================================ */
+const NOME_OK = /^[\p{L}\p{M}0-9' .-]{1,30}$/u;
 const nomeBonito = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
 const ERROS_LOGIN = {
@@ -105,7 +143,7 @@ const ERROS_LOGIN = {
 
 function telaLogin(erro = '') {
   limpar();
-  let modo = 'entrar', turmas = [];
+  let modo = 'entrar', turmas = [], cadastroAberto = true;
   app.innerHTML = `<div class="login">
     <section class="login-hero">
       <div class="logo grande"><span class="logo-ic">${icone('keyboard')}</span><span>Tecla<b>Ninja</b></span></div>
@@ -133,6 +171,7 @@ function telaLogin(erro = '') {
         </div>
         <label>Senha<input id="l-senha" type="password" required minlength="4" maxlength="30" autocomplete="current-password"></label>
         <label class="so-cadastro">Repita a senha<input id="l-senha2" type="password" minlength="4" maxlength="30" autocomplete="new-password"></label>
+        <p class="aviso so-cadastro" id="l-fechado" hidden>${icone('lock')} O primeiro acesso está fechado agora. Peça ao professor para liberar no painel.</p>
         <p class="mini so-cadastro">Crie uma senha fácil de lembrar, com <b>pelo menos 4 caracteres</b>, e anote em um lugar seguro. Use sempre o mesmo nome e sobrenome para entrar.</p>
         <button class="bt grande" id="l-bt">Entrar</button>
       </form>
@@ -148,7 +187,10 @@ function telaLogin(erro = '') {
     $$('.abas-login button').forEach(x => x.classList.toggle('ativo', x === b));
     bt.textContent = modo === 'cadastro' ? 'Criar meu acesso' : 'Entrar';
     $('#l-senha').autocomplete = modo === 'cadastro' ? 'new-password' : 'current-password';
+    mostrarFechado();
   });
+  const mostrarFechado = () => { $('#l-fechado').hidden = cadastroAberto; bt.disabled = modo === 'cadastro' && !cadastroAberto; };
+  lerConfig().then(cfg => { cadastroAberto = cfg.cadastroLiberado !== false; mostrarFechado(); }).catch(() => {});
 
   function preencherTurmas() {
     const lista = turmas.filter(t => escolaDe(t) === selE.value).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
@@ -187,12 +229,18 @@ function telaLogin(erro = '') {
     const falha = !turma ? 'Escolha a escola e a turma.'
       : !/\p{L}/u.test(primeiro) || !/\p{L}/u.test(ultimo) ? 'Digite seu primeiro nome e seu último sobrenome.'
       : primeiro.includes(' ') ? 'No primeiro nome, digite só uma palavra (ex.: Ana).'
+      : !NOME_OK.test(primeiro) || !NOME_OK.test(ultimo) ? 'Use só letras no nome e no sobrenome (sem símbolos).'
       : senha.length < 4 ? 'A senha precisa ter pelo menos 4 caracteres.'
       : modo === 'cadastro' && senha !== $('#l-senha2').value ? 'As duas senhas não são iguais.' : '';
     if (falha) { msg.textContent = falha; return; }
     bt.disabled = true;
     try {
-      if (modo === 'cadastro') await cadastrarAluno({ primeiro, ultimo, turma, senha });
+      if (modo === 'cadastro') {
+        // Confere de novo na hora (o professor pode ter fechado o primeiro acesso agora há pouco).
+        cadastroAberto = (await lerConfig().catch(() => ({}))).cadastroLiberado !== false;
+        if (!cadastroAberto) { mostrarFechado(); return; }
+        await cadastrarAluno({ primeiro, ultimo, turma, senha });
+      }
       else await entrarAluno({ primeiro, ultimo, codigo: turma.codigo, senha });
     } catch (err) {
       if (!ERROS_LOGIN[err?.code]) console.error(err);
@@ -209,6 +257,7 @@ function montarShell() {
     <nav class="menu">
       <a href="#/inicio" data-r="inicio"><span class="mi">${icone('house')}</span><span class="mt">Início</span></a>
       <a href="#/jogos" data-r="jogos"><span class="mi">${icone('gamepad-2')}</span><span class="mt">Jogos</span></a>
+      <a href="#/avatar" data-r="avatar"><span class="mi">${icone('shirt')}</span><span class="mt">Avatar</span></a>
       <a href="#/conquistas" data-r="conquistas"><span class="mi">${icone('award')}</span><span class="mt">Conquistas</span></a>
       <a href="#/ranking" data-r="ranking"><span class="mi">${icone('trophy')}</span><span class="mt">Ranking</span></a>
       <a href="#/guia" data-r="guia"><span class="mi">${icone('hand')}</span><span class="mt">Guia</span></a>
@@ -303,7 +352,7 @@ function rotear() {
   const c = $('#conteudo');
   c.className = ''; c.innerHTML = ''; scrollTo(0, 0);
   if (!S.liberado) { $$('.menu a').forEach(x => x.classList.remove('ativo')); return telaPausa(c); }
-  const telas = { licao: () => telaLicao(c, param), jogos: () => telaJogos(c), jogo: () => telaJogo(c, param), conquistas: () => telaConquistas(c), ranking: () => telaRanking(c), guia: () => telaGuia(c) };
+  const telas = { licao: () => telaLicao(c, param), jogos: () => telaJogos(c), jogo: () => telaJogo(c, param), avatar: () => telaAvatar(c), conquistas: () => telaConquistas(c), ranking: () => telaRanking(c), guia: () => telaGuia(c) };
   (telas[rota] || (() => telaInicio(c)))();
 }
 
@@ -323,15 +372,17 @@ function telaPausa(c) {
   </section></div>`;
 }
 
+/** Guarda o progresso (e a sessão, se houver) e tenta enviar. Sem internet, fica na fila. */
 async function salvarTudo(sessao) {
-  if (!S.liberado) return;
-  try {
-    await salvarAluno(S.aluno.uid, semFoto(S.aluno));
-    await registrarSessao(S.aluno.uid, sessao);
-    if (S.aluno.turma) await salvarRanking(S.aluno.uid, dadosRanking(S.aluno)).catch(e => console.warn('ranking:', e.code || e));
-  } catch (e) {
-    console.error(e);
-    toast('Não foi possível salvar o progresso. Verifique sua internet.', 'erro');
+  if (!S.liberado || !S.aluno) return;
+  const uid = S.aluno.uid, p = lerPend(uid) || { sessoes: [] };
+  if (sessao) p.sessoes.push({ ...sessao, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8) });
+  p.progresso = soProgresso(S.aluno);
+  gravarPend(uid, p);
+  if (!(await enviarPendentes())) {
+    toast(S.erroEnvio === 'permission-denied'
+      ? 'O servidor não aceitou salvar agora (o curso pode ter sido pausado). Seu resultado ficou guardado neste computador.'
+      : 'Sem conexão agora. Seu resultado ficou guardado neste computador e será enviado quando a internet voltar.', 'erro');
   }
 }
 
@@ -498,6 +549,7 @@ function telaLicao(c, id) {
         <div><b>${r.precisao}%</b><small>precisão</small></div>
         <div><b>${fmtTempo(r.seg)}</b><small>tempo</small></div>
         <div><b>+${out.xp}</b><small>XP</small></div>
+        <div><b>+${out.moedas}</b><small>moedas</small></div>
       </div>
       ${piores.length ? `<div class="res-erros"><small>Teclas em que você mais errou:</small>${piores.map(([k, n]) => `<span class="keycap pequena" data-dedo="${passos(k).at(-1)?.dedo}">${k === ' ' ? 'espaço' : esc(k)}<sub>${n}</sub></span>`).join('')}</div>` : ''}
       <div class="acoes">
@@ -574,9 +626,10 @@ function telaJogos(c) {
   const a = S.aluno, letras = letrasJogos();
   c.innerHTML = `<div class="pagina">
     <h1 class="titulo-pg">${icone('gamepad-2', 'tit')} Jogos</h1>
-    <p class="muted">Os jogos usam as letras que você já aprendeu nas lições (<span class="mono">${esc(letras.toUpperCase())}</span>). Quanto mais lições, mais desafios!</p>
-    <div class="jogos-grid">${JOGOS.map(j => `<a class="jogo-card" href="#/jogo/${j.id}" style="--cor:${j.cor}">
-      <span class="j-ic">${icone(j.icone)}</span><h3>${j.nome}</h3><p>${j.desc}</p>
+    <div class="jogos-topo"><p class="muted">Os jogos usam as letras que você já aprendeu nas lições (<span class="mono">${esc(letras.toUpperCase())}</span>). Quanto mais lições, mais desafios! Cada partida dá <b>moedas</b> para a loja do avatar.</p>
+      <a class="moedas-tag" href="#/avatar">${avatarSvg(a.avatar, { tam: 30, so: 'cabeca' })}${icone('coins')} <b>${a.moedas}</b></a></div>
+    <div class="jogos-grid">${JOGOS.map(j => `<a class="jogo-card${j.novo ? ' destaque' : ''}" href="#/jogo/${j.id}" style="--cor:${j.cor}">
+      <span class="j-ic">${icone(j.icone)}</span>${j.novo ? '<span class="selo-novo">Novo</span>' : ''}<h3>${j.nome}</h3><p>${j.desc}</p>
       <div class="j-rod"><span>${icone('trophy')} Recorde: <b>${a.jogos[j.id]?.recorde || 0}</b></span><span class="bt pequeno">Jogar</span></div></a>`).join('')}
     </div></div>`;
 }
@@ -607,7 +660,7 @@ function telaJogo(c, id) {
     tirarKd(); inst?.destruir();
     area.innerHTML = '<div class="jogo-palco" id="jp"></div>';
     const letras = letrasJogos();
-    inst = iniciarJogo(j.id, $('#jp', area), { letras, palavras: palavrasPara(letras), frases: FRASES, onFim: fim });
+    inst = iniciarJogo(j.id, $('#jp', area), { letras, palavras: palavrasPara(letras), frases: FRASES, avatar: S.aluno.avatar, onFim: fim });
   }
 
   async function fim(res) {
@@ -620,7 +673,7 @@ function telaJogo(c, id) {
       <h2>${out.recorde ? icone('trophy', 'tit') + ' Novo recorde!' : 'Fim de jogo!'}</h2>
       <div class="pontos-grandes">${res.pontos}<small>pontos</small></div>
       ${res.detalhe ? `<p class="muted">${esc(res.detalhe)}</p>` : ''}
-      <p class="xp">+${out.xp} XP</p>
+      <p class="xp">+${out.xp} XP · ${icone('coins')} +${out.moedas} moedas</p>
       <div class="acoes"><button class="bt" id="denovo">${icone('rotate-ccw')} Jogar de novo <kbd>Enter</kbd></button><a class="bt sec" href="#/jogos">Outros jogos</a></div></div>`;
     area.append(ov);
     if (out.recorde && res.pontos > 0) { confete(); som.sucesso(); }
@@ -661,7 +714,72 @@ async function telaRanking(c) {
     const lista = await lerRanking(a.turma);
     if (!$('#rk', c)) return;
     $('#rk', c).innerHTML = `<ol class="ranking">${lista.map((r, i) => `<li class="${r.uid === a.uid ? 'eu' : ''}">
-      <span class="pos ${['ouro', 'prata', 'bronze'][i] || ''}">${i + 1}</span>${avatar(r.nome, r.foto)}<span class="rk-nome">${esc(r.nome)}${r.uid === a.uid ? ' <small>(você)</small>' : ''}</span>
+      <span class="pos ${['ouro', 'prata', 'bronze'][i] || ''}">${i + 1}</span>${!r.foto && r.avatar && Object.keys(r.avatar).length ? `<span class="avatar boneco-av">${avatarSvg(r.avatar, { tam: 34, so: 'cabeca' })}</span>` : avatar(r.nome, r.foto)}<span class="rk-nome">${esc(r.nome)}${r.uid === a.uid ? ' <small>(você)</small>' : ''}</span>
       <span class="rk-det">Nv ${r.nivel} · ${r.licoes} lições · ${r.melhorPpm} PPM</span><b class="rk-xp">${r.xp} XP</b></li>`).join('')}</ol>`;
   } catch (e) { console.error(e); $('#rk', c).innerHTML = '<p class="erro-msg">Não foi possível carregar o ranking.</p>'; }
+}
+
+/* ================================ Avatar ================================ */
+const textoReq = it => it.req.nivel ? `Chegue ao nível ${it.req.nivel}` : `Conquista: ${CONQUISTAS.find(c => c.id === it.req.conquista)?.nome || ''}`;
+const MOSTRA_CABECA = new Set(['pele', 'rosto', 'chapeu']);
+
+function telaAvatar(c) {
+  const a = S.aluno;
+  let cat = ler('tn_av_cat', 'pele');
+  if (!CATEGORIAS.some(k => k.id === cat)) cat = 'pele';
+  desenhar();
+
+  function desenhar() {
+    const av = avatarDe(a.avatar), base = { ...a, nivel: nivelDe(a.xp).n };
+    c.innerHTML = `<div class="pagina">
+      <div class="cab-pg"><h1 class="titulo-pg">${icone('shirt', 'tit')} Meu avatar</h1><span class="moedas-tag">${icone('coins')} <b>${a.moedas}</b> moedas</span></div>
+      <div class="avatar-pg">
+        <section class="card av-palco">
+          <div class="av-boneco">${avatarSvg(av, { tam: 132 })}</div>
+          <b>${esc(primeiroNome(a.nome))}</b>
+          <p class="mini muted">Ganhe moedas nas lições (cada estrela nova vale 5) e nos jogos. Alguns itens são liberados por nível ou por conquista. Seu avatar aparece no ranking e no Parkour Ninja.</p>
+        </section>
+        <section class="card av-loja">
+          <div class="av-abas" role="tablist">${CATEGORIAS.map(k => `<button type="button" role="tab" data-cat="${k.id}" class="${k.id === cat ? 'ativo' : ''}">${icone(k.icone)}<span>${k.nome}</span></button>`).join('')}</div>
+          <div class="av-itens">${ITENS.filter(i => i.cat === cat).map(i => {
+            const st = situacao(base, i), usando = av[cat] === i.id;
+            const rot = usando ? `${icone('check')} Usando` : st === 'livre' ? 'Usar' : st === 'comprar' ? `${icone('coins')} ${i.preco}` : `${icone('lock')} ${esc(textoReq(i))}`;
+            return `<button type="button" class="av-item ${st}${usando ? ' usando' : ''}" data-item="${i.id}">
+              <span class="av-prev">${avatarSvg({ ...av, [cat]: i.id }, MOSTRA_CABECA.has(cat) ? { tam: 64, so: 'cabeca' } : { tam: 50 })}</span>
+              <b>${esc(i.nome)}</b><small>${rot}</small></button>`;
+          }).join('')}</div>
+        </section>
+      </div></div>`;
+    $$('[data-cat]', c).forEach(b => b.onclick = () => { cat = b.dataset.cat; gravar('tn_av_cat', cat); desenhar(); });
+    $$('[data-item]', c).forEach(b => b.onclick = () => escolher(ITENS.find(i => i.id === b.dataset.item), base));
+  }
+
+  function escolher(it, base) {
+    const st = situacao(base, it);
+    if (st === 'bloqueado') return toast(`${esc(it.nome)}: ${esc(textoReq(it))}.`, '', 'lock');
+    if (st === 'comprar') {
+      if ((a.moedas || 0) < it.preco) return toast(`Faltam <b>${it.preco - (a.moedas || 0)}</b> moedas para comprar ${esc(it.nome)}. Jogue e faça lições para ganhar mais!`, '', 'coins');
+      const m = modal(`<div class="centro-txt"><div class="av-prev grande">${avatarSvg({ ...avatarDe(a.avatar), [it.cat]: it.id }, { tam: 110 })}</div>
+        <h2>Comprar ${esc(it.nome)}?</h2><p class="muted">Custa <b>${it.preco}</b> moedas. Você tem <b>${a.moedas}</b>.</p>
+        <div class="acoes"><button class="bt" id="av-sim">${icone('shopping-bag')} Comprar e usar</button><button class="bt sec" id="av-nao">Agora não</button></div></div>`);
+      $('#av-nao', m.el).onclick = m.fechar;
+      $('#av-sim', m.el).onclick = () => {
+        m.fechar();
+        a.moedas -= it.preco; a.itens = [...new Set([...(a.itens || []), it.id])];
+        som.sucesso(); toast(`Você comprou <b>${esc(it.nome)}</b>!`, 'ok', 'shopping-bag');
+        vestir(it);
+      };
+      return;
+    }
+    vestir(it);
+  }
+
+  function vestir(it) {
+    a.avatar = { ...avatarDe(a.avatar), [it.cat]: it.id };
+    // Conquista "Estiloso" e outras que dependem dos itens.
+    const novas = CONQUISTAS.filter(x => !a.conquistas[x.id] && x.ok(a));
+    for (const x of novas) a.conquistas[x.id] = Date.now();
+    if (novas.length) { a.xp += novas.length * 25; anunciar({ conquistas: novas }); }
+    som.pop(); desenhar(); salvarTudo(null);
+  }
 }

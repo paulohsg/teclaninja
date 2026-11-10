@@ -1,19 +1,21 @@
 // Painel do professor: turmas, lista de alunos, detalhes e exportação.
-import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo, observarCurso, definirCurso, definirFotos, salvarFoto, bloquearFoto } from './store.js';
+import { MODO, observarLogin, entrarGoogle, entrarDemo, sair, ehProfessor, listarAlunos, listarTurmas, criarTurma, excluirTurma, lerSessoes, excluirAluno, salvarAluno, salvarRanking, registrarSessao, chaveAluno, DOMINIO_LOGIN, liberarNovaSenhaDemo, definirSenhaDemo, observarCurso, definirCurso, definirFotos, definirCadastro, salvarFoto, bloquearFoto } from './store.js';
 import { LICOES, MODULOS } from './licoes.js';
 import { JOGOS } from './jogos.js';
 import { criarTeclado, codeDe } from './teclado.js';
 import { icone } from './icones.js';
 import { nivelDe, CONQUISTAS, sequencia, decTecla, precisaoGeral, licoesFeitas, totalEstrelas, normalizar, novoAluno, dadosRanking, codTecla } from './progresso.js';
-import { $, $$, esc, toast, aplicarTema, alternarTema, fmtTempo, fmtData, avatar, modal, GOOGLE_SVG, hoje, reduzirImagem } from './ui.js';
+import { $, $$, esc, toast, aplicarTema, alternarTema, fmtTempo, fmtData, avatar, modal, GOOGLE_SVG, hoje, reduzirImagem, ler, gravar } from './ui.js';
+import { avatarSvg } from './avatar.js';
 
 const app = $('#app');
-const P = { user: null, turmas: [], alunos: [], turma: '', busca: '', ordem: 'nome', dir: 1, aba: 'alunos', pararCurso: null };
+// turma = filtro escolhido (lembrado entre visitas); carregada = turma cujos alunos estão em P.alunos ('' = todas).
+const P = { user: null, turmas: [], alunos: [], turma: ler('tn_prof_turma', ''), carregada: null, busca: '', ordem: 'nome', dir: 1, aba: 'alunos', pararCurso: null, cadastroLiberado: true };
 const DIA = 864e5;
 
 aplicarTema();
-observarLogin((u, erro) => {
-  if (!u) return telaLogin(erro);
+observarLogin(u => {
+  if (!u) return telaLogin();
   if (MODO === 'demo' && u.email !== 'professor@demo.local') return telaLogin();
   if (MODO === 'firebase' && !ehProfessor(u.email)) return telaNegado(u);
   P.user = u; painel();
@@ -33,7 +35,7 @@ function telaLogin(erro = '') {
     ${erro ? `<p class="erro-msg">${esc(erro)}</p>` : ''}
     <p class="mini"><a href="index.html">${icone('arrow-left')} Ir para o curso</a></p>
   </section></div>`;
-  $('#entrar')?.addEventListener('click', () => entrarGoogle(false).catch(e => toast('Erro ao entrar: ' + esc(e.message), 'erro')));
+  $('#entrar')?.addEventListener('click', () => entrarGoogle().catch(e => toast('Erro ao entrar: ' + esc(e.message), 'erro')));
   $('#demo')?.addEventListener('click', () => entrarDemo('Professor(a)', 'professor@demo.local'));
 }
 
@@ -82,7 +84,8 @@ function ligarInterruptor() {
   const sw = $('#sw-curso'), txt = $('#sw-txt'), caixa = $('#sw');
   const mostrar = (lib, dados = {}) => {
     P.fotosLiberadas = dados.fotosLiberadas !== false;
-    atualizarSwitchFotos();
+    P.cadastroLiberado = dados.cadastroLiberado !== false;
+    atualizarSwitchFotos(); atualizarSwitchCadastro();
     sw.checked = lib; sw.disabled = false;
     caixa.classList.toggle('desligado', !lib);
     txt.textContent = lib ? 'Curso liberado' : 'Curso pausado';
@@ -105,17 +108,26 @@ function ligarInterruptor() {
   };
 }
 
+/** Busca turmas e alunos. Com uma turma escolhida, só os alunos dela são lidos (mais rápido e gasta menos a cota do Firebase). */
 async function carregar() {
   $('#conteudo').innerHTML = '<div class="spinner"></div>';
   try {
-    [P.turmas, P.alunos] = await Promise.all([listarTurmas(), listarAlunos()]);
-    P.alunos = P.alunos.filter(a => !ehProfessor(a.email)).map(normalizar);
+    P.turmas = await listarTurmas();
+    if (P.turma && !P.turmas.some(t => t.codigo === P.turma)) P.turma = '';
+    P.alunos = (await listarAlunos(P.turma || undefined)).filter(a => !ehProfessor(a.email)).map(normalizar);
+    P.carregada = P.turma;
   } catch (e) {
     console.error(e);
     $('#conteudo').innerHTML = `<div class="card"><p class="erro-msg">Não foi possível carregar os dados: ${esc(e.message)}</p><p class="muted">Confira se o seu e-mail está em <code>firestore.rules</code> e se as regras foram publicadas.</p></div>`;
     return;
   }
   render();
+}
+
+/** Troca o filtro de turma e busca os alunos dela no banco. */
+function filtrarTurma(codigo) {
+  P.turma = codigo; gravar('tn_prof_turma', codigo);
+  carregar();
 }
 
 function render() {
@@ -139,7 +151,7 @@ function linhaDados(a) {
 
 function abaAlunos() {
   const c = $('#conteudo');
-  const linhas = P.alunos.filter(a => !P.turma || a.turma === P.turma).map(linhaDados);
+  const linhas = P.alunos.filter(a => !P.carregada || a.turma === P.carregada).map(linhaDados);
   const ativos = linhas.filter(l => Date.now() - l.acesso < 7 * DIA).length;
   const media = (f, comValor = false) => {
     const v = linhas.map(f).filter(x => !comValor || x > 0);
@@ -164,7 +176,7 @@ function abaAlunos() {
       ${stat(icone('clock'), fmtTempo(linhas.reduce((s, l) => s + l.tempo, 0)), 'de prática no total')}
     </section>
     <section class="card sem-pad"><div class="tabela-wrap" id="tabela"></div></section>`;
-  $('#f-turma').onchange = e => { P.turma = e.target.value; abaAlunos(); };
+  $('#f-turma').onchange = e => filtrarTurma(e.target.value);
   $('#f-busca').oninput = e => { P.busca = e.target.value; tabela(linhas); };
   $('#bt-atualizar').onclick = carregar;
   $('#bt-csv').onclick = () => exportarCsv(linhas);
@@ -232,14 +244,15 @@ async function detalhe(uid) {
   try { sessoes = await lerSessoes(uid); } catch (e) { console.error(e); }
   const erros = Object.entries(a.stats.errosTecla || {}).map(([k, n]) => [decTecla(k), n]).sort((x, y) => y[1] - x[1]);
   m.el.innerHTML = `
-    <div class="det-cab">${avatar(a.nome, a.foto, 'g')}<div><h2>${esc(a.nome)}</h2><p class="muted">${esc(escolaDaTurma(a.turma, a))}${escolaDaTurma(a.turma, a) ? ' · ' : ''}${esc(nomeTurma(a.turma))}</p></div></div>
+    <div class="det-cab">${avatar(a.nome, a.foto, 'g')}<span class="det-boneco" title="Avatar do aluno">${avatarSvg(a.avatar, { tam: 44 })}</span><div><h2>${esc(a.nome)}</h2><p class="muted">${esc(escolaDaTurma(a.turma, a))}${escolaDaTurma(a.turma, a) ? ' · ' : ''}${esc(nomeTurma(a.turma))}</p></div></div>
     ${String(a.email || '').endsWith('@' + DOMINIO_LOGIN) ? `<details class="caixa-senha"><summary>${icone('key-round')} O aluno esqueceu a senha?</summary>
       ${MODO === 'demo' ? `<p>No modo demonstração, clique abaixo. O aluno faz o <b>Primeiro acesso</b> de novo, com o mesmo nome e turma, e cria outra senha. O progresso é mantido.</p><button class="bt sec pequeno" id="d-senha">Liberar nova senha</button>`
       : `<ol>
         <li>Abra o <a href="https://console.firebase.google.com/project/_/authentication/users" target="_blank" rel="noopener">console do Firebase → Authentication → Usuários</a>.</li>
         <li>Na busca, cole o login do aluno: <code id="d-login">${esc(a.email)}</code> <button class="bt sec pequeno" id="d-copiar">${icone('copy')} Copiar</button></li>
         <li>Clique nos <b>três pontinhos (⋮)</b> da linha do aluno → <b>Excluir conta</b>.</li>
-        <li>Peça ao aluno para fazer o <b>Primeiro acesso</b> de novo, com o <b>mesmo nome, sobrenome e turma</b>, criando uma nova senha. O progresso dele é mantido.</li>
+        <li>Confira se o <b>Primeiro acesso</b> está liberado (aba <b>Turmas</b>).</li>
+        <li>Peça ao aluno para fazer o <b>Primeiro acesso</b> de novo, com o <b>mesmo nome, sobrenome e turma</b>, criando uma nova senha. O progresso dele é mantido. Depois, se quiser, feche o Primeiro acesso de novo.</li>
       </ol>`}</details>` : ''}
     <section class="stats mini">
       ${stat(icone('award'), `Nv ${nv.n}`, nv.nome + ` · ${a.xp} XP`)}
@@ -280,9 +293,25 @@ async function detalhe(uid) {
   $('#d-senha', m.el)?.addEventListener('click', () => { liberarNovaSenhaDemo(a.uid); toast('Pronto! O aluno já pode criar uma nova senha no Primeiro acesso.', 'ok'); });
   $('#d-excluir', m.el).onclick = async () => {
     if (!confirm(`Excluir ${a.nome} e todo o progresso? Esta ação não pode ser desfeita.`)) return;
-    try { await excluirAluno(a.uid); P.alunos = P.alunos.filter(x => x.uid !== a.uid); m.fechar(); abaAlunos(); toast('Aluno excluído.'); }
+    try { await excluirAluno(a.uid); P.alunos = P.alunos.filter(x => x.uid !== a.uid); m.fechar(); abaAlunos(); toast('Aluno excluído.'); avisoLogin(a); }
     catch (err) { toast('Erro: ' + esc(err.message), 'erro'); }
   };
+}
+
+/** Excluir no painel apaga o progresso, mas o login continua no Firebase: explica como apagar. */
+function avisoLogin(a) {
+  if (MODO === 'demo' || !String(a.email || '').endsWith('@' + DOMINIO_LOGIN)) return;
+  const m = modal(`<h2>${icone('key-round')} Falta apagar o login</h2>
+    <p>O progresso de <b>${esc(a.nome)}</b> foi apagado. O login dele continua no Firebase: se ele entrar de novo, começa do zero.</p>
+    <ol>
+      <li>Abra o <a href="https://console.firebase.google.com/project/_/authentication/users" target="_blank" rel="noopener">console do Firebase → Authentication → Usuários</a>.</li>
+      <li>Na busca, cole o login: <code>${esc(a.email)}</code> <button class="bt sec pequeno" id="al-copiar">${icone('copy')} Copiar</button></li>
+      <li>Clique nos <b>três pontinhos (⋮)</b> → <b>Excluir conta</b>.</li>
+    </ol>
+    <p class="muted mini">Com o <b>Primeiro acesso</b> fechado (aba Turmas), quem não tem cadastro não consegue entrar.</p>
+    <div class="acoes"><button class="bt" id="al-ok">Entendi</button></div>`);
+  $('#al-copiar', m.el).onclick = () => navigator.clipboard?.writeText(a.email).then(() => toast('Login copiado!', 'ok'), () => {});
+  $('#al-ok', m.el).onclick = m.fechar;
 }
 
 /** Gráfico de linha (uma série) com tooltip ao passar o mouse. */
@@ -328,7 +357,16 @@ function abaTurmas() {
   const c = $('#conteudo');
   const escolas = [...new Set(P.turmas.map(t => t.escola).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'pt-BR'));
   const grupos = escolas.concat(P.turmas.some(t => !t.escola) ? [''] : []);
+  const contar = P.carregada === '';
   c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">${icone('school', 'tit')} Turmas</h1></div>
+    <section class="card config-fotos">
+      <label class="interruptor" id="swc">
+        <input type="checkbox" id="sw-cadastro" role="switch">
+        <span class="trilho" aria-hidden="true"><span class="bolinha"></span></span>
+        <span class="sw-txt" id="swc-txt"></span>
+      </label>
+      <p class="muted mini">O <b>Primeiro acesso</b> é o cadastro de alunos novos. Deixe liberado só enquanto a turma se cadastra (ou quando um aluno precisa refazer a senha) e feche depois: assim ninguém se cadastra com o nome de um colega ou de fora da escola. Quem já tem cadastro continua entrando normalmente.</p>
+    </section>
     <section class="card">
       <h3>Criar nova turma</h3>
       <form id="f-nova" class="linha-form">
@@ -342,7 +380,7 @@ function abaTurmas() {
     ${grupos.map(g => `<h2 class="secao">${g ? esc(g) : 'Sem escola'}</h2><div class="turmas-grid">${ordenarTurmas(P.turmas.filter(t => (t.escola || '') === g)).map(t => {
       const n = P.alunos.filter(a => a.turma === t.codigo).length;
       return `<div class="card turma"><h3>${esc(t.nome)}</h3>
-        <p class="muted">${n} aluno(s) · criada em ${new Date(t.criadaEm).toLocaleDateString('pt-BR')}</p>
+        <p class="muted">${contar || P.carregada === t.codigo ? `${n} aluno(s) · ` : ''}criada em ${new Date(t.criadaEm).toLocaleDateString('pt-BR')}</p>
         <div class="acoes"><button class="bt sec pequeno" data-ver="${esc(t.codigo)}">${icone('eye')} Ver alunos</button><button class="bt perigo pequeno" data-excluir="${esc(t.codigo)}">${icone('trash-2')} Excluir</button></div></div>`;
     }).join('')}</div>`).join('') || '<p class="muted">Nenhuma turma criada ainda. Crie a primeira acima para os alunos conseguirem entrar.</p>'}`;
   $('#f-nova').onsubmit = async e => {
@@ -354,10 +392,17 @@ function abaTurmas() {
     try { const t = await criarTurma(nome, escola); P.turmas = [...P.turmas.filter(x => x.codigo !== t.codigo), t]; toast(`Turma <b>${esc(t.nome)}</b> criada!`, 'ok'); abaTurmas(); }
     catch (err) { toast('Erro ao criar turma: ' + esc(err.message), 'erro'); }
   };
-  $$('[data-ver]', c).forEach(b => b.onclick = () => { P.turma = b.dataset.ver; P.aba = 'alunos'; render(); });
+  atualizarSwitchCadastro();
+  $('#sw-cadastro').onchange = async e => {
+    const lib = e.target.checked; e.target.disabled = true;
+    try { await definirCadastro(lib); P.cadastroLiberado = lib; toast(lib ? 'Primeiro acesso liberado: alunos novos já podem se cadastrar.' : 'Primeiro acesso fechado. Só quem já tem cadastro consegue entrar.', 'ok'); }
+    catch (err) { console.error(err); toast('Não foi possível mudar. Confira se as regras novas do firestore.rules foram publicadas.', 'erro'); }
+    atualizarSwitchCadastro();
+  };
+  $$('[data-ver]', c).forEach(b => b.onclick = () => { P.aba = 'alunos'; filtrarTurma(b.dataset.ver); });
   $$('[data-excluir]', c).forEach(b => b.onclick = async () => {
     const n = P.alunos.filter(a => a.turma === b.dataset.excluir).length;
-    if (!confirm(`Excluir esta turma?${n ? `\n\nAtenção: os ${n} aluno(s) desta turma não vão mais conseguir entrar, porque o login usa a turma. O progresso deles continua salvo.` : ''}`)) return;
+    if (!confirm(`Excluir esta turma?${!contar && P.carregada !== b.dataset.excluir ? '\n\nAtenção: os alunos desta turma não vão mais conseguir entrar, porque o login usa a turma. O progresso deles continua salvo.' : n ? `\n\nAtenção: os ${n} aluno(s) desta turma não vão mais conseguir entrar, porque o login usa a turma. O progresso deles continua salvo.` : ''}`)) return;
     try { await excluirTurma(b.dataset.excluir); P.turmas = P.turmas.filter(t => t.codigo !== b.dataset.excluir); abaTurmas(); }
     catch (err) { toast('Erro: ' + esc(err.message), 'erro'); }
   });
@@ -402,6 +447,14 @@ async function gerarExemplo() {
   carregar();
 }
 
+function atualizarSwitchCadastro() {
+  const sw = $('#sw-cadastro');
+  if (!sw) return;
+  sw.checked = P.cadastroLiberado !== false; sw.disabled = false;
+  $('#swc').classList.toggle('desligado', !sw.checked);
+  $('#swc-txt').textContent = sw.checked ? 'Primeiro acesso liberado' : 'Primeiro acesso fechado';
+}
+
 /* ================================ Fotos ================================ */
 function atualizarSwitchFotos() {
   const sw = $('#sw-fotos'), caixa = $('#swf');
@@ -413,7 +466,7 @@ function atualizarSwitchFotos() {
 
 function abaFotos() {
   const c = $('#conteudo');
-  const lista = P.alunos.filter(a => !P.turma || a.turma === P.turma).sort((x, y) => (x.nome || '').localeCompare(y.nome || '', 'pt-BR'));
+  const lista = P.alunos.filter(a => !P.carregada || a.turma === P.carregada).sort((x, y) => (x.nome || '').localeCompare(y.nome || '', 'pt-BR'));
   const comFoto = lista.filter(a => a.foto).length;
   c.innerHTML = `<div class="cab-pg"><h1 class="titulo-pg">${icone('camera', 'tit')} Fotos de perfil <small>${comFoto} de ${lista.length} com foto</small></h1></div>
     <section class="card config-fotos">
@@ -444,7 +497,7 @@ function abaFotos() {
     catch (err) { console.error(err); toast('Não foi possível mudar. Confira se as regras novas do firestore.rules foram publicadas.', 'erro'); }
     atualizarSwitchFotos();
   };
-  $('#ff-turma').onchange = e => { P.turma = e.target.value; abaFotos(); };
+  $('#ff-turma').onchange = e => filtrarTurma(e.target.value);
   $('#ff-atualizar').onclick = carregar;
   const alunoDe = el => P.alunos.find(a => a.uid === el.closest('.foto-card').dataset.uid);
   const trocar = async (a, foto) => {

@@ -152,7 +152,9 @@ export async function registrarSessao(uid, s) {
     LS.gravar('sessoes', t); return;
   }
   const { db, F } = await fb();
-  await F.addDoc(F.collection(db, 'alunos', uid, 'sessoes'), limpo(s));
+  // Com id (gerado no aparelho), reenviar a mesma sessão não cria uma cópia: as regras só deixam criar.
+  if (s.id) await F.setDoc(F.doc(db, 'alunos', uid, 'sessoes', s.id), limpo(s));
+  else await F.addDoc(F.collection(db, 'alunos', uid, 'sessoes'), limpo(s));
 }
 
 export async function lerSessoes(uid, n = 300) {
@@ -211,7 +213,7 @@ export async function lerRanking(turma) {
 }
 
 /* ------------------------- Liberar / pausar o curso ------------------------- */
-// Documento config/curso = { liberado, fotosLiberadas }. Sem documento (ou sem o campo), vale "liberado".
+// Documento config/curso = { liberado, fotosLiberadas, cadastroLiberado }. Sem documento (ou sem o campo), vale "liberado".
 const ouvintesCurso = [];
 
 /** Avisa em tempo real se o curso está liberado: cb(liberado, dados). Devolve uma função para parar de ouvir. */
@@ -239,6 +241,17 @@ async function gravarConfig(dados) {
 
 /** Professor liga ou desliga o curso para todos os alunos. */
 export const definirCurso = liberado => gravarConfig({ liberado: !!liberado });
+
+/** Professor abre ou fecha o "Primeiro acesso" (cadastro de alunos novos). */
+export const definirCadastro = liberado => gravarConfig({ cadastroLiberado: !!liberado });
+
+/** Lê as configurações uma vez (usado na tela de login, antes de entrar). */
+export async function lerConfig() {
+  if (MODO === 'demo') return LS.ler('curso', {});
+  const { db, F } = await fb();
+  const s = await F.getDoc(F.doc(db, 'config', 'curso'));
+  return s.exists() ? s.data() : {};
+}
 
 /** Professor permite ou não que os alunos troquem a própria foto. */
 export const definirFotos = liberadas => gravarConfig({ fotosLiberadas: !!liberadas });
