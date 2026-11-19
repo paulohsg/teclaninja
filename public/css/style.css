@@ -728,3 +728,116 @@ input:focus, select:focus { border-color: var(--primaria); box-shadow: 0 0 0 4px
 .jogo-pg .palco:not(.toupeira-palco) { height: max(300px, min(470px, calc(100vh - 190px))); }
 .jogo-pg .jogo-area { min-height: 0; }
 @media (max-height: 820px) { .jogo-pg .jogo-cab { margin-bottom: .6rem; } .jogo-pg .hud { margin-bottom: .5rem; } #conteudo:has(.jogo-pg) { padding-top: .8rem; } }
+
+/* ---------- Jogos ao vivo (aluno) ---------- */
+#aovivo-quadro { margin-top: 1rem; }
+.av-convite { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; border-radius: var(--raio); border: 1px solid var(--borda); background: var(--surface); color: var(--texto); box-shadow: var(--sombra); }
+.av-convite > div { flex: 1; min-width: 0; display: grid; gap: .15rem; }
+.av-convite small { color: var(--muted); }
+.av-convite.apagado { box-shadow: none; background: var(--surface2); }
+.av-convite.apagado .j-ic { opacity: .6; }
+.av-convite.aceso { border: 2px solid var(--primaria); animation: av-pulsa 1.6s ease-in-out infinite; }
+@keyframes av-pulsa { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primaria) 22%, transparent), var(--sombra); } }
+.av-aviso { text-align: center; display: grid; justify-items: center; gap: .6rem; padding: 2rem 1.4rem; }
+.av-aviso h1 { margin: 0; font-size: 1.6rem; }
+.av-aviso p { margin: 0; max-width: 560px; }
+.av-topo { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.av-topo h1 { margin: 0 auto 0 .2rem; font-size: 1.35rem; display: flex; align-items: center; gap: .4rem; }
+.av-tag, .av-lugar, .av-time > span { background: var(--surface); border: 1px solid var(--borda); border-radius: 11px; padding: .3rem .75rem; font-size: .92rem; display: inline-flex; align-items: center; gap: .35rem; }
+.av-lugar { border-color: var(--primaria); color: var(--primaria); }
+.av-time > span { background: var(--cor); border-color: var(--cor); color: #fff; font-weight: 700; }
+.av-espera h2 { display: flex; align-items: center; gap: .5rem; margin-top: 0; font-size: 1.2rem; }
+.av-lobby { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+.av-lobby > p { width: 100%; margin: 0 0 .2rem; }
+.av-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .2rem .7rem .2rem .25rem; border-radius: 999px; background: var(--surface2); border: 1px solid var(--borda); font-size: .88rem; font-weight: 600; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.av-chip .boneco { border-radius: 50%; background: var(--surface); flex: none; }
+.av-chip.eu { border-color: var(--primaria); background: color-mix(in srgb, var(--primaria) 12%, var(--surface)); }
+.av-chip b { font-family: var(--mono); color: var(--primaria); }
+.aovivo-pg { position: relative; }
+.av-texto-box { position: relative; }
+.aovivo-pg .texto { font-size: clamp(1.05rem, 1.9vw, 1.35rem); max-height: calc(1.9em * 3 + 1.6rem); padding: .8rem 1.2rem; }
+.contagem-av { position: absolute; inset: 0; display: grid; place-items: center; font: 800 4rem Poppins; color: var(--primaria); background: color-mix(in srgb, var(--surface) 70%, transparent); border-radius: var(--raio); z-index: 2; }
+.av-msg { text-align: center; font-weight: 700; color: var(--ok); min-height: 1.4em; margin: .5rem 0 0; display: flex; justify-content: center; align-items: center; gap: .4rem; }
+
+/* Pista da corrida ao vivo */
+.pista-viva { display: flex; flex-direction: column; gap: 4px; padding: .5rem; border-radius: var(--raio); background: #3f3f46; margin-bottom: .7rem; }
+.raia { display: grid; grid-template-columns: 2.2rem minmax(70px, 9rem) minmax(0, 1fr) 4.6rem; align-items: center; gap: .5rem; height: 28px; padding: 0 .5rem; border-radius: 8px; background: #52525b; color: #f4f4f5; font-size: .82rem; }
+.raia.eu { background: #6d28d9; box-shadow: inset 0 0 0 2px #c4b5fd; }
+.raia.chegou .r-pos { color: #facc15; }
+.r-pos { font-weight: 800; font-family: var(--mono); }
+.r-nome { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.r-trilho { position: relative; height: 26px; border-right: 6px solid; border-image: repeating-linear-gradient(#fff 0 4px, #111 4px 8px) 6; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .25) 0 14px, transparent 14px 28px) 0 100% / 100% 2px no-repeat; }
+.r-boneco { position: absolute; bottom: -2px; transition: left .35s linear; }
+.r-boneco .boneco { height: 26px; width: auto; }
+.r-ppm { text-align: right; font-family: var(--mono); font-size: .78rem; color: #d4d4d8; }
+.pista-viva.compacta { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); }
+
+/* Batalha de equipes */
+.bt-placar { display: flex; align-items: center; gap: .7rem; margin-bottom: .6rem; flex-wrap: wrap; }
+.bp { display: flex; align-items: baseline; gap: .5rem; font-size: .95rem; }
+.bp.a b { color: #2563eb; } .bp.b b { color: #dc2626; }
+.bp span { font-family: var(--mono); font-size: .85rem; color: var(--muted); }
+.bp-barra { flex: 1; min-width: 120px; height: 14px; border-radius: 7px; background: #dc2626; overflow: hidden; }
+.bp-barra i { display: block; height: 100%; background: #2563eb; transition: width .4s; border-right: 3px solid #facc15; }
+.palco.arena { height: 230px; background: #38bdf8; }
+.palco.arena canvas { display: block; }
+.bt-digitar { display: grid; justify-items: center; gap: .3rem; margin-top: .6rem; }
+.bt-palavra { min-width: 220px; text-align: center; padding: .3rem 1.2rem; border-radius: 14px; background: var(--surface); border: 2px solid var(--borda); font: 700 2rem var(--mono); letter-spacing: .06em; }
+.bt-palavra small { font: 500 .95rem Poppins, sans-serif; color: var(--muted); }
+.bt-palavra .ok { color: var(--ok); }
+.bt-palavra .atual { text-decoration: underline; text-decoration-color: var(--primaria); text-underline-offset: 6px; text-decoration-thickness: 3px; }
+.bt-palavra.erro { animation: tremer .3s; border-color: var(--erro); }
+.bt-prox { color: var(--muted); font-family: var(--mono); font-size: .95rem; min-height: 1.3em; }
+.bt-meus { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; font-size: .9rem; color: var(--muted); }
+.bt-meus b { color: var(--texto); font-family: var(--mono); }
+.bt-serie { color: var(--aviso); font-weight: 700; display: inline-flex; align-items: center; gap: .3rem; }
+.av-resultado { max-width: 520px; }
+.av-podio { display: flex; justify-content: center; align-items: flex-end; gap: .8rem; margin: .6rem 0; }
+.av-podio > div { display: grid; justify-items: center; gap: .15rem; padding: .5rem .6rem; border-radius: 14px 14px 0 0; background: var(--surface2); min-width: 90px; max-width: 160px; }
+.av-podio b { font-size: .85rem; overflow-wrap: anywhere; text-align: center; }
+.av-podio span { font-size: .8rem; color: var(--muted); font-weight: 700; }
+.av-podio .p1 { order: 2; padding-bottom: 1.6rem; background: color-mix(in srgb, var(--ouro) 25%, var(--surface2)); }
+.av-podio .p2 { order: 1; padding-bottom: .9rem; }
+.av-podio .p3 { order: 3; }
+
+/* ---------- Jogos ao vivo (painel do professor / telão) ---------- */
+.av-form h3 { margin-top: 0; }
+.av-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .8rem; align-items: end; }
+.av-campos > label { display: grid; gap: .3rem; font-weight: 600; font-size: .9rem; }
+.av-campos .bt { justify-self: start; }
+.av-tipos { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .7rem; }
+.av-tipo { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .7rem; align-items: center; padding: .8rem 1rem; border-radius: 14px; border: 2px solid var(--borda); background: var(--surface2); cursor: pointer; }
+.av-tipo input { position: absolute; opacity: 0; pointer-events: none; }
+.av-tipo .j-ic { grid-row: span 2; }
+.av-tipo small { color: var(--muted); font-size: .8rem; }
+.av-tipo:has(input:checked) { border-color: var(--primaria); background: color-mix(in srgb, var(--primaria) 10%, var(--surface)); }
+.av-campos[data-tipo="corrida"] .so-batalha, .av-campos[data-tipo="batalha"] .so-corrida { display: none; }
+.av-aberta { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .4rem 0; }
+.sala-viva { display: grid; gap: .7rem; }
+.sala-viva:fullscreen { background: var(--bg); padding: 1.2rem 1.5rem; overflow: auto; align-content: start; }
+.sv-topo { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.sv-topo h1 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; min-width: 0; }
+.sv-topo h1 small { font-size: .95rem; color: var(--muted); font-weight: 600; overflow-wrap: anywhere; }
+.sv-topo .esp { flex: 1; }
+.sv-estado { padding: .25rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 700; background: var(--surface2); color: var(--muted); border: 1px solid var(--borda); }
+.sv-estado.jogando { background: var(--ok); color: #fff; border-color: var(--ok); }
+.sv-instr { font-size: 1.15rem; margin: .3rem 0 .6rem; }
+.av-lobby.grande .av-chip { font-size: 1rem; padding: .3rem .9rem .3rem .3rem; }
+.sv-largada { position: relative; min-height: 0; }
+.sv-largada .contagem-av { position: fixed; inset: 0; font-size: 9rem; border-radius: 0; z-index: 30; }
+.av-podio.grande > div { min-width: 140px; }
+.palco.arena.grande { height: min(48vh, 380px); }
+.palco.arena .contagem-av { font-size: 6rem; }
+.sv-vencedor { position: absolute; inset: 0; display: grid; place-items: center; font: 800 3rem Poppins; color: #fff; text-shadow: 0 4px 20px rgba(0, 0, 0, .6); background: rgba(15, 23, 42, .35); }
+.sv-vencedor .ic { width: 1em; height: 1em; }
+.sv-times { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.sv-time { display: flex; flex-wrap: wrap; gap: .35rem; align-content: start; min-width: 0; }
+.sv-time h3 { width: 100%; margin: 0 0 .2rem; font-size: 1rem; }
+.sv-time h3 small { color: var(--muted); font-weight: 500; }
+@media (max-width: 700px) { .sv-times { grid-template-columns: 1fr; } .raia { grid-template-columns: 2rem minmax(50px, 6rem) minmax(0, 1fr) 3.6rem; } }
+.contagem-av[hidden], .sv-vencedor[hidden] { display: none; }
+.av-campos > label:first-child { grid-column: 1 / -1; max-width: 520px; }
+.av-campos select { width: 100%; }
+.pista-viva.compacta .raia { height: 36px; font-size: .9rem; }
+.pista-viva.compacta .r-trilho { height: 34px; }
+.pista-viva.compacta .r-boneco .boneco { height: 34px; }

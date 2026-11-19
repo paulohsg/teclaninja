@@ -111,6 +111,8 @@ export const CONQUISTAS = [
   { id: 'grao', icone: 'crown', nome: 'Grande mestre', desc: 'Conclua o Desafio final.', ok: a => !!a.licoes.l86?.concluida },
   { id: 'parkour', icone: 'flag-triangle-right', nome: 'Mestre do parkour', desc: 'Chegue ao estágio 10 no Parkour Ninja.', ok: a => (a.jogos.parkour?.estagio || 0) >= 10 },
   { id: 'chefao', icone: 'swords', nome: 'Caçador de chefões', desc: 'Derrote a Nave-mãe na Defesa Galáctica.', ok: a => !!a.jogos.galaxia?.chefao },
+  { id: 'aovivo', icone: 'flag-triangle-right', nome: 'Campeão da turma', desc: 'Vença uma Corrida ao vivo.', ok: a => (a.jogos.aovivo?.vitorias || 0) >= 1 },
+  { id: 'equipe', icone: 'users', nome: 'Trabalho em equipe', desc: 'Vença uma Batalha de equipes com o seu time.', ok: a => (a.jogos.batalha?.vitorias || 0) >= 1 },
   { id: 'estilo', icone: 'shirt', nome: 'Estiloso', desc: 'Compre um item na loja do avatar.', ok: a => (a.itens || []).length > 0 }
 ];
 

@@ -45,6 +45,13 @@ Em todas as lições o teclado na tela acende a próxima tecla e as mãos mostra
 | Caça-Toupeiras | Toupeiras nas teclas, com níveis, várias toupeiras ao mesmo tempo, toupeira dourada (+2 s) e bombas (tiram pontos e tempo). |
 | Desafio 60 segundos | Teste de velocidade (PPM). |
 
+**Jogos ao vivo (a turma inteira ao mesmo tempo):** o professor abre a sala no painel e os alunos entram pela tela de Jogos.
+
+| Jogo ao vivo | Como funciona |
+|---|---|
+| Corrida ao vivo | Todos digitam o mesmo texto ao mesmo tempo. Cada aluno vê o avatar dos colegas correndo e a sua posição; no fim aparece o pódio. |
+| Batalha de equipes | A turma é dividida em Time Azul e Time Vermelho. Cada palavra certa manda tropas contra a base do outro time; 10 palavras seguidas sem erro dobram o ataque. Vence quem derrubar a base inimiga ou estiver na frente quando o tempo acabar. A conta usa a média por aluno, então times de tamanhos diferentes são justos. |
+
 **Avatar e moedas:** cada aluno monta um boneco de blocos (pele, rosto, cabeça, camisa, calça e costas) no menu **Avatar**. As moedas vêm das lições (2 por tentativa + 5 por estrela nova) e dos jogos. Alguns itens se compram com moedas; outros são liberados por nível ou conquista (ex.: a coroa só para quem termina o Desafio final). O avatar aparece no ranking e corre no Parkour Ninja. As moedas só servem para itens visuais: não mudam nota, XP ou ranking.
 
 **Estrelas:** passa com 85% de precisão. ⭐⭐ = 92% + a meta de PPM da lição. ⭐⭐⭐ = 96% + 30% acima da meta.
@@ -95,9 +102,10 @@ São dois: **E-mail/senha** (alunos) e **Google** (professor).
    - Sempre que o arquivo `firestore.rules` mudar no repositório, copie e publique de novo.
 
 ### 5. Definir o(s) professor(es)
-O e-mail do professor precisa estar em **dois lugares** (já está preenchido com `paulo15356@go.docente.senai.br`):
+O e-mail do professor precisa estar em **três lugares** (já está preenchido com `paulo15356@go.docente.senai.br`):
 - `public/js/config.js` → lista `PROFESSORES`
 - `firestore.rules` → função `professor()` (lembre de publicar as regras de novo se mudar)
+- `database.rules.json` → as três linhas com o e-mail (regras dos jogos ao vivo; publicar de novo se mudar)
 
 
 ### 6. Publicar o site (Netlify)
@@ -108,6 +116,25 @@ Para o login funcionar no Netlify, o endereço precisa estar liberado no Firebas
 2. **Adicionar domínio** → `teclaninja.netlify.app` → **Adicionar**.
 
 > Depois de uma atualização, peça aos alunos para recarregar a página com **Ctrl + Shift + R**.
+
+---
+
+### 7. Jogos ao vivo: configurar o Realtime Database
+Os jogos ao vivo usam o **Realtime Database**, um segundo banco do Firebase (grátis), feito para atualizações rápidas. Precisa ser criado uma vez só:
+
+1. Acesse https://console.firebase.google.com e abra o projeto **teclaninja-escola**.
+2. No menu da esquerda, clique em **Criação → Realtime Database** (se não aparecer, clique em **Todos os produtos** e procure "Realtime Database").
+3. Clique em **Criar banco de dados**.
+4. Em **Local do Realtime Database**, escolha **Estados Unidos (us-central1)** → **Próxima**. (Não existe opção no Brasil; os Estados Unidos são os mais perto e funcionam bem.)
+5. Em **Regras de segurança**, escolha **Iniciar no modo bloqueado** → **Ativar**.
+6. Na aba **Dados**, o endereço do banco aparece no topo, algo como `https://teclaninja-escola-default-rtdb.firebaseio.com/`. Ele precisa ser igual ao campo `databaseURL` do arquivo `public/js/config.js` (já está preenchido com esse endereço). Se for diferente:
+   - no GitHub, abra `public/js/config.js`, clique no **lápis (Edit)**, troque o endereço do `databaseURL` pelo que aparece no Firebase (sem a barra `/` no final) e clique em **Commit changes**.
+7. Clique na aba **Regras**, apague tudo, cole o conteúdo do arquivo **`database.rules.json`** deste repositório e clique em **Publicar**.
+   - Sempre que o arquivo `database.rules.json` mudar no repositório, copie e publique de novo.
+
+Pronto. Para testar: no painel, aba **Ao vivo**, abra uma sala; num outro computador, entre como aluno daquela turma e abra **Jogos**.
+
+> Limites do plano grátis: **até 100 alunos conectados ao mesmo tempo** (uma ou duas turmas jogando juntas) e 10 GB de tráfego por mês (sobra muito para o uso na escola).
 
 ---
 
@@ -144,6 +171,20 @@ No topo do painel do professor há um botão **liga/desliga** ("Curso liberado" 
   - desligar a troca de fotos para **todos** com o botão do topo da aba.
 - As regras do banco garantem isso: com bloqueio, o aluno não consegue trocar a foto nem pelo navegador.
 
+### Jogos ao vivo na aula
+1. No painel, abra a aba **Ao vivo**, escolha a **turma** e o jogo:
+   - **Corrida ao vivo:** escolha o texto (fileira base, uma frase ou duas frases).
+   - **Batalha de equipes:** escolha as palavras (fileira base, todas as letras ou palavras longas) e a duração (2, 3 ou 5 minutos).
+2. Clique em **Abrir sala**. Deixe essa tela aberta, de preferência no **projetor**: ela é o telão do jogo e é ela que dá a largada e encerra a partida. O botão de monitor deixa em tela cheia.
+3. Peça aos alunos para abrir **Jogos**: aparece o quadro **"Ao vivo agora"**. Eles clicam em **Entrar** e os nomes aparecem no telão.
+4. Clique em **Começar**. Há uma contagem de 3 segundos. Na batalha, os times são sorteados nessa hora; quem entrar atrasado vai para o time com menos alunos.
+5. A partida termina sozinha (todos chegaram, a base caiu ou o tempo acabou) ou no botão **Encerrar agora**. Depois, use **Nova partida** para jogar de novo com a mesma turma, ou **Fechar sala**.
+
+- Os nomes e os avatares no telão vêm do cadastro: o aluno não consegue aparecer com outro nome.
+- Cada aluno ganha XP e moedas pela partida; vencer dá as conquistas **Campeão da turma** e **Trabalho em equipe**.
+- Se o professor recarregar a página no meio da aula, a aba **Ao vivo** mostra as **Salas abertas** com o botão **Abrir telão**.
+- No **modo demonstração**, o botão **Adicionar alunos robôs** enche a sala para você ver como fica.
+
 ### Professor praticando
 Entrando no curso (`index.html`) com a sua conta Google de professor, todas as lições e todas as letras dos jogos ficam liberadas, e o botão de pausa não bloqueia você.
 
@@ -161,12 +202,14 @@ Entrando no curso (`index.html`) com a sua conta Google de professor, todas as l
 - Clique em um aluno para ver: avatar, gráfico da evolução da velocidade, estrelas em cada lição, teclas em que mais erra, jogos, conquistas e atividades recentes. Também dá para excluí-lo.
 - **Excluir aluno** apaga o progresso, mas o login dele continua no Firebase. O painel mostra o passo a passo para apagar o login também (Authentication → Usuários).
 - **Exportar planilha (CSV)**: abre no Excel ou Google Planilhas.
+- **Ao vivo**: abre a sala dos jogos ao vivo e mostra o telão (veja "Jogos ao vivo na aula").
 
 ### Segurança (o que as regras do banco garantem)
 - Cada aluno só vê o **ranking da própria turma**. Pessoas de fora não veem nomes nem fotos.
 - O aluno não consegue mudar o próprio nome, turma ou escola, nem colocar um nome qualquer no ranking.
 - O XP só sobe aos poucos e o ranking precisa ser igual ao perfil, então "trapacear" pelo navegador não leva ninguém ao topo.
 - Com o **Primeiro acesso fechado**, ninguém novo consegue se cadastrar.
+- **Jogos ao vivo** (`database.rules.json`): só o professor abre salas e escreve nomes e times; cada aluno só vê a sala da própria turma e só mexe no próprio placar; a velocidade é limitada (não dá para "pular" para o fim da corrida nem mandar centenas de pontos de uma vez).
 
 > Limite: como o curso roda no navegador, um aluno muito esperto ainda consegue marcar lições como feitas pelo console do navegador. As regras impedem que isso vire XP alto de uma vez nem apareça como nome falso no ranking.
 
@@ -187,6 +230,9 @@ Entrando no curso (`index.html`) com a sua conta Google de professor, todas as l
 - **O ranking aparece vazio ou com erro depois de uma atualização:** as regras novas do `firestore.rules` não foram publicadas (Parte 4).
 - **Popup de login do professor não abre:** permita popups para o site no navegador.
 
+- **Aluno não vê o quadro "Ao vivo agora":** confira se ele está na turma da sala, se a sala está aberta no painel e se o Realtime Database foi criado (Parte 7). Peça para recarregar com **Ctrl + Shift + R**.
+- **"Não foi possível abrir a sala" no painel:** as regras do `database.rules.json` não foram publicadas ou o `databaseURL` do `config.js` está diferente do endereço do banco (Parte 7).
+
 ## Estrutura dos arquivos
 
 ```
@@ -194,6 +240,7 @@ teclaninja/
 ├── README.md            este guia
 ├── firebase.json        configuração do Firebase (regras do banco)
 ├── firestore.rules      regras de segurança do banco (copiar no console do Firebase)
+├── database.rules.json  regras do Realtime Database (jogos ao vivo)
 └── public/              o site (é esta pasta que o Netlify publica)
     ├── index.html       curso (alunos)
     ├── professor.html   painel do professor
@@ -204,6 +251,7 @@ teclaninja/
         ├── professor.js painel do professor
         ├── licoes.js    conteúdo das lições (edite aqui para mudar textos)
         ├── jogos.js     os 6 jogos
+        ├── aovivo.js    jogos ao vivo: salas, corrida, batalha, telão
         ├── avatar.js    avatar de blocos: itens da loja, preços e desenho
         ├── motor.js     motor de digitação (PPM, precisão)
         ├── entrada.js   captura do que o aluno digita (acentos no Chromebook)

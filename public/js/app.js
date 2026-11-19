@@ -7,6 +7,8 @@ import { icone } from './icones.js';
 import { JOGOS, iniciarJogo } from './jogos.js';
 import { nivelDe, novoAluno, normalizar, registrarLicao, registrarJogo, CONQUISTAS, sequencia, teclasAprendidas, licaoLiberada, meta3, decTecla, dadosRanking, precisaoGeral, licoesFeitas, totalEstrelas, soProgresso } from './progresso.js';
 import { CATEGORIAS, ITENS, avatarDe, avatarSvg, situacao } from './avatar.js';
+import { RT_CONFIGURADO, TIPOS, EQUIPES, CONTAGEM, TEMPO, ouvir, gravar as gravarRT, atualizar as atualizarRT, remover, meuUid, apagarAoSair, agora, jogadoresDe, classificacao, placarBatalha, vencedorDe, palavrasBatalha, proximaPalavra, Pista, Arena } from './aovivo.js';
+import { ouvirDigitacao } from './entrada.js';
 import { $, $$, esc, toast, som, confete, aplicarTema, alternarTema, fmtTempo, ler, gravar, avatar, primeiroNome, rnd, modal, reduzirImagem } from './ui.js';
 
 const app = $('#app');
@@ -348,11 +350,11 @@ function rotear() {
   limpar();
   $('.menu-user')?.remove();
   const [rota, param] = location.hash.replace(/^#\/?/, '').split('/');
-  $$('.menu a').forEach(x => x.classList.toggle('ativo', x.dataset.r === (rota || 'inicio') || (rota === 'jogo' && x.dataset.r === 'jogos')));
+  $$('.menu a').forEach(x => x.classList.toggle('ativo', x.dataset.r === (rota || 'inicio') || ((rota === 'jogo' || rota === 'aovivo') && x.dataset.r === 'jogos')));
   const c = $('#conteudo');
   c.className = ''; c.innerHTML = ''; scrollTo(0, 0);
   if (!S.liberado) { $$('.menu a').forEach(x => x.classList.remove('ativo')); return telaPausa(c); }
-  const telas = { licao: () => telaLicao(c, param), jogos: () => telaJogos(c), jogo: () => telaJogo(c, param), avatar: () => telaAvatar(c), conquistas: () => telaConquistas(c), ranking: () => telaRanking(c), guia: () => telaGuia(c) };
+  const telas = { licao: () => telaLicao(c, param), jogos: () => telaJogos(c), jogo: () => telaJogo(c, param), aovivo: () => telaAoVivo(c), avatar: () => telaAvatar(c), conquistas: () => telaConquistas(c), ranking: () => telaRanking(c), guia: () => telaGuia(c) };
   (telas[rota] || (() => telaInicio(c)))();
 }
 
@@ -628,10 +630,12 @@ function telaJogos(c) {
     <h1 class="titulo-pg">${icone('gamepad-2', 'tit')} Jogos</h1>
     <div class="jogos-topo"><p class="muted">Os jogos usam as letras que você já aprendeu nas lições (<span class="mono">${esc(letras.toUpperCase())}</span>). Quanto mais lições, mais desafios! Cada partida dá <b>moedas</b> para a loja do avatar.</p>
       <a class="moedas-tag" href="#/avatar">${avatarSvg(a.avatar, { tam: 30, so: 'cabeca' })}${icone('coins')} <b>${a.moedas}</b></a></div>
+    <div id="aovivo-quadro"></div>
     <div class="jogos-grid">${JOGOS.map(j => `<a class="jogo-card${j.novo ? ' destaque' : ''}" href="#/jogo/${j.id}" style="--cor:${j.cor}">
       <span class="j-ic">${icone(j.icone)}</span>${j.novo ? '<span class="selo-novo">Novo</span>' : ''}<h3>${j.nome}</h3><p>${j.desc}</p>
       <div class="j-rod"><span>${icone('trophy')} Recorde: <b>${a.jogos[j.id]?.recorde || 0}</b></span><span class="bt pequeno">Jogar</span></div></a>`).join('')}
     </div></div>`;
+  S.limpeza = quadroAoVivo(c);
 }
 
 function telaJogo(c, id) {
@@ -781,5 +785,304 @@ function telaAvatar(c) {
     for (const x of novas) a.conquistas[x.id] = Date.now();
     if (novas.length) { a.xp += novas.length * 25; anunciar({ conquistas: novas }); }
     som.pop(); desenhar(); salvarTudo(null);
+  }
+}
+
+/* ================================ Ao vivo ================================ */
+// O professor abre a sala da turma no painel (aba Ao vivo). Aqui o aluno entra, espera a largada e joga.
+const podeAoVivo = () => S.user?.aluno && MODO === 'firebase' && RT_CONFIGURADO && S.aluno?.turma;
+
+/** Quadro "Ao vivo" no topo da tela de jogos: aparece sozinho quando o professor abre uma sala. */
+function quadroAoVivo(c) {
+  const el = $('#aovivo-quadro', c);
+  if (!el) return () => {};
+  const vazio = `<div class="av-convite apagado"><span class="j-ic">${icone('users')}</span><div><b>Jogos ao vivo</b><small>Corrida e batalha contra a sua turma. Quando o professor abrir uma sala, ela aparece aqui.</small></div></div>`;
+  if (!podeAoVivo()) { el.innerHTML = vazio; return () => {}; }
+  el.innerHTML = vazio;
+  let parar = null, vivo = true;
+  ouvir(`salas/${S.aluno.turma}/info`, info => {
+    if (!vivo) return;
+    const t = info && TIPOS[info.tipo];
+    el.innerHTML = t ? `<a class="av-convite aceso" href="#/aovivo"><span class="j-ic">${icone(t.icone)}</span><div><b>Ao vivo agora: ${t.nome}</b><small>${info.estado === 'jogando' ? 'A partida já começou. Ainda dá para entrar!' : 'O professor abriu a sala. Entre e espere a largada.'}</small></div><span class="bt">Entrar ${icone('arrow-right')}</span></a>` : vazio;
+  }).then(f => { parar = f; if (!vivo) f(); }).catch(e => console.warn(e));
+  return () => { vivo = false; parar?.(); };
+}
+
+function telaAoVivo(c) {
+  const a = S.aluno;
+  const aviso = txt => {
+    c.innerHTML = `<div class="pagina"><div class="crumb"><a href="#/jogos">${icone('arrow-left')} Jogos</a></div>
+      <section class="card av-aviso"><span class="j-ic">${icone('users')}</span><h1>Jogos ao vivo</h1><p class="muted">${txt}</p></section></div>`;
+  };
+  if (!S.user?.aluno) return aviso('Professor: abra a sala e acompanhe a partida pelo painel do professor, na aba <b>Ao vivo</b>.');
+  if (MODO === 'demo') return aviso('No modo demonstração, os jogos ao vivo funcionam só no painel do professor, com alunos robôs.');
+  if (!RT_CONFIGURADO) return aviso('O professor ainda precisa ativar o Realtime Database do Firebase (passo a passo no README).');
+  if (!a.turma) return aviso('Você precisa estar em uma turma para jogar ao vivo.');
+
+  const caminho = 'salas/' + a.turma;
+  let sala = null, uid = '', dentro = false, entrando = false, fase = '', jogo = null, pararSala = null, ativo = true;
+  let pendente = null, timer = null, registrado = null;
+  const meu = () => `${caminho}/jogadores/${uid}`;
+
+  S.limpeza = () => {
+    ativo = false; pararSala?.(); jogo?.destruir(); clearTimeout(timer); tirarEnter();
+    if (dentro && sala?.info?.estado !== 'fim') remover(meu()).catch(() => {});
+  };
+  c.innerHTML = '<div class="pagina"><div class="spinner"></div></div>';
+  meuUid().then(u => { uid = u; return ouvir(caminho, v => { sala = v; mudou(); }); })
+    .then(f => { pararSala = f; if (!ativo) f(); })
+    .catch(e => { console.error(e); aviso('Não foi possível conectar ao jogo ao vivo. Verifique a internet e recarregue a página.'); });
+
+  // Envia o progresso no máximo a cada 0,4 s (ou na hora, no fim).
+  function enviar(d, ja = false) {
+    pendente = { ...pendente, ...d };
+    if (ja) return descarregar();
+    timer ??= setTimeout(descarregar, 400);
+  }
+  function descarregar() {
+    clearTimeout(timer); timer = null;
+    if (!pendente || !dentro) return;
+    const d = { ...pendente, t: TEMPO }; pendente = null;
+    atualizarRT(meu(), d).catch(e => console.warn('ao vivo:', e.code || e));
+  }
+
+  async function entrar() {
+    if (entrando || !sala?.info) return;
+    entrando = true;
+    try {
+      const corrida = sala.info.tipo === 'corrida';
+      await gravarRT(meu(), { id: a.uid, t: TEMPO, erros: 0, ...(corrida ? { pos: 0 } : { pts: 0, palavras: 0 }) });
+      await apagarAoSair(meu());
+      dentro = true;
+    } catch (e) {
+      console.error(e);
+      toast('Não foi possível entrar na sala. Verifique a internet e tente de novo.', 'erro');
+    }
+    entrando = false; mudou();
+  }
+
+  function mudou() {
+    if (!ativo) return;
+    const est = sala?.info?.estado || 'nada';
+    if (est === 'nada') dentro = false;
+    // O professor começou outra partida (ou a internet caiu e voltou): entra de novo sozinho.
+    if (dentro && est !== 'fim' && est !== 'nada' && !sala.jogadores?.[uid]) entrar();
+    const chave = `${est}|${sala?.info?.comecou || ''}|${dentro}|${sala?.info?.tipo || ''}`;
+    if (chave !== fase) {
+      fase = chave;
+      if (est === 'fim' && jogo) { jogo.terminar(sala); return; }
+      jogo?.destruir(); jogo = null; tirarEnter();
+      if (est === 'nada') return semSala();
+      if (!dentro) return convite(est);
+      if (est === 'espera') return espera();
+      if (est === 'jogando') jogo = sala.info.tipo === 'corrida' ? corrida() : batalha();
+      if (est === 'fim') return encerrada();
+    }
+    if (jogo) jogo.atualizar(sala);
+    else if (est === 'espera' && dentro) atualizarEspera();
+  }
+
+  let kd = null;
+  const tirarEnter = () => { if (kd) removeEventListener('keydown', kd); kd = null; };
+  const aoEnter = fn => { tirarEnter(); kd = e => { if (e.key === 'Enter') { e.preventDefault(); fn(); } }; addEventListener('keydown', kd); };
+  const topo = (t, extra = '') => `<div class="av-topo"><a href="#/jogos" class="bt sec pequeno">${icone('x')} Sair</a><h1>${icone(t.icone, 'tit')} ${t.nome}</h1>${extra}</div>`;
+
+  function semSala() {
+    c.innerHTML = `<div class="pagina"><div class="crumb"><a href="#/jogos">${icone('arrow-left')} Jogos</a></div>
+      <section class="card av-aviso"><span class="j-ic">${icone('users')}</span><h1>Nenhuma sala aberta</h1>
+      <p class="muted">Quando o professor abrir uma sala ao vivo para a sua turma, ela aparece aqui sozinha. Deixe esta tela aberta!</p></section></div>`;
+  }
+
+  function convite(est) {
+    const t = TIPOS[sala.info.tipo];
+    c.innerHTML = `<div class="pagina"><div class="crumb"><a href="#/jogos">${icone('arrow-left')} Jogos</a></div>
+      <section class="card av-aviso"><span class="j-ic">${icone(t.icone)}</span><h1>${t.nome}</h1><p class="muted">${t.desc}</p>
+      <p>${est === 'jogando' ? 'A partida já começou, mas ainda dá para entrar.' : est === 'fim' ? 'A partida acabou. Espere o professor começar outra.' : 'O professor abriu a sala. Entre e espere a largada!'}</p>
+      ${est !== 'fim' ? `<button class="bt grande" id="av-entrar">${icone('users')} Entrar na sala <kbd>Enter</kbd></button>` : ''}</section></div>`;
+    const bt = $('#av-entrar', c);
+    if (bt) { bt.onclick = () => { bt.disabled = true; entrar(); }; aoEnter(() => { bt.disabled = true; entrar(); }); }
+  }
+
+  function espera() {
+    const t = TIPOS[sala.info.tipo];
+    c.innerHTML = `<div class="pagina">${topo(t)}
+      <section class="card av-espera"><h2>${icone('clock')} Você está na sala! Espere o professor começar.</h2>
+      <p class="muted">${sala.info.tipo === 'batalha' ? 'Os times são sorteados na largada. Digite as palavras que aparecerem para mandar tropas contra a base inimiga!' : 'Todos vão digitar o mesmo texto. Precisão primeiro: errar faz você ficar parado!'}</p>
+      <div class="av-lobby" id="lobby"></div></section></div>`;
+    atualizarEspera();
+  }
+  function atualizarEspera() {
+    const el = $('#lobby', c);
+    if (!el) return;
+    const js = jogadoresDe(sala);
+    el.innerHTML = `<p class="mini muted">${js.length} na sala</p>` + js.map(j => `<span class="av-chip${j.uid === uid ? ' eu' : ''}">${avatarSvg(j.avatar, { tam: 28, so: 'cabeca' })}${esc(j.nome)}</span>`).join('');
+  }
+
+  function encerrada() {
+    const t = TIPOS[sala.info.tipo];
+    c.innerHTML = `<div class="pagina">${topo(t)}<section class="card av-aviso"><h1>Partida encerrada</h1><p class="muted">Espere o professor começar outra partida. Esta tela muda sozinha.</p></section></div>`;
+  }
+
+  /** Registra o resultado (XP, moedas, conquistas) uma vez por partida. */
+  function registrar(tipo, r) {
+    const id = sala.info.comecou;
+    if (registrado === id || !(r.acertos > 0)) return null;
+    registrado = id;
+    const out = registrarJogo(S.aluno, tipo, r);
+    anunciar(out);
+    salvarTudo({ tipo: 'jogo', ref: tipo, titulo: TIPOS[tipo === 'aovivo' ? 'corrida' : 'batalha'].nome, pontos: r.pontos, ppm: r.ppm || 0, precisao: r.precisao || 0, seg: Math.round(r.seg || 0), xp: out.xp, data: Date.now() });
+    return out;
+  }
+
+  function contagem(el, largada, aoLargar) {
+    let largou = false;
+    const passo = () => {
+      const falta = largada - agora();
+      if (falta > 0) { el.hidden = false; el.textContent = Math.ceil(falta / 1000); return; }
+      if (!largou) { largou = true; el.textContent = 'VAI!'; som.pop(); setTimeout(() => { el.hidden = true; }, 700); aoLargar(); }
+    };
+    passo();
+    return setInterval(passo, 100);
+  }
+
+  /* ---------- Corrida ao vivo ---------- */
+  function corrida() {
+    const t = TIPOS.corrida, texto = sala.info.texto, total = [...texto].length;
+    const largada = sala.info.comecou + CONTAGEM;
+    c.innerHTML = `<div class="pagina aovivo-pg">${topo(t, `<span class="av-lugar" id="lugar">—</span><span class="av-tag">${icone('zap')} <b id="ppm">0</b> PPM</span><span class="av-tag">${icone('target')} <b id="prec">100</b>%</span>`)}
+      <div id="pista"></div>
+      <div class="av-texto-box"><div class="texto corrida-texto" id="txt">${esc(texto)}</div><div class="contagem-av" id="cont" hidden></div></div>
+      <p class="av-msg" id="msg"></p></div>`;
+    const pista = new Pista($('#pista', c));
+    let motor = null, st = null, fimMeu = 0;
+    const relogio = contagem($('#cont', c), largada, () => {
+      motor = new Motor({
+        alvo: $('#txt', c), texto,
+        onProgresso: s => { st = s; $('#ppm', c).textContent = s.ppm; $('#prec', c).textContent = s.precisao; enviar({ pos: motor?.pos ?? 0, erros: s.erros }); },
+        onFim: s => {
+          st = s; fimMeu = Math.max(1000, Math.round(agora() - largada));
+          enviar({ pos: total, erros: s.erros, fim: fimMeu }, true);
+          $('#msg', c).innerHTML = `${icone('flag-triangle-right')} Você chegou! Espere os colegas terminarem.`;
+          som.sucesso();
+        }
+      });
+    });
+    function atualizar(s) {
+      const lista = classificacao(s), eu = lista.findIndex(j => j.uid === uid);
+      // Mostra os 3 primeiros e os vizinhos de quem está jogando (até 7 raias).
+      const mostrar = lista.length <= 7 ? lista : lista.filter((j, i) => i < 3 || Math.abs(i - eu) <= 2).slice(0, 7);
+      pista.mostrar(mostrar, { eu: uid });
+      if (eu >= 0) $('#lugar', c).innerHTML = `${icone('trophy')} <b>${eu + 1}º</b> de ${lista.length}`;
+    }
+    function terminar(s) {
+      clearInterval(relogio); motor?.destruir();
+      const lista = classificacao(s), lugar = lista.findIndex(j => j.uid === uid) + 1;
+      const st2 = st || { acertos: 0, erros: 0, ppm: 0, precisao: 0, seg: 0 };
+      const venceu = lugar === 1 && !!fimMeu;
+      const pontos = Math.round(([300, 200, 150][lugar - 1] || 80) + st2.ppm * 5);
+      const out = registrar('aovivo', { ...st2, pontos, moedas: [10, 7, 5][lugar - 1] || 2, extra: { vitorias: (a.jogos.aovivo?.vitorias || 0) + (venceu ? 1 : 0) }, detalhe: `${lugar}º lugar` });
+      const podio = lista.slice(0, 3);
+      const ov = document.createElement('div'); ov.className = 'jogo-fim';
+      ov.innerHTML = `<div class="card av-resultado">
+        <h2>${lugar ? `${lugar === 1 ? icone('trophy', 'tit') + ' ' : ''}Você ficou em ${lugar}º lugar!` : 'Fim da corrida!'}</h2>
+        <div class="av-podio">${podio.map((j, i) => `<div class="p${i + 1}">${avatarSvg(j.avatar, { tam: 54 })}<b>${esc(j.nome)}</b><span>${i + 1}º</span></div>`).join('')}</div>
+        <p class="muted">${st2.ppm} PPM · ${st2.precisao}% de precisão</p>
+        ${out ? `<p class="xp">+${out.xp} XP · ${icone('coins')} +${out.moedas} moedas</p>` : ''}
+        <div class="acoes"><a class="bt sec" href="#/jogos">Voltar aos jogos</a></div>
+        <p class="mini muted">Se o professor começar outra partida, esta tela muda sozinha.</p></div>`;
+      $('.aovivo-pg', c)?.append(ov);
+      if (venceu) confete();
+    }
+    return { atualizar, terminar, destruir() { clearInterval(relogio); motor?.destruir(); } };
+  }
+
+  /* ---------- Batalha de equipes ---------- */
+  function batalha() {
+    const t = TIPOS.batalha, info = sala.info;
+    const largada = info.comecou + CONTAGEM, fimT = largada + (info.duracao || 3) * 60000;
+    const lista = palavrasBatalha(info.nivel);
+    c.innerHTML = `<div class="pagina aovivo-pg">${topo(t, `<span class="av-tag">${icone('timer')} <b id="tempo">—</b></span><span class="av-time" id="meutime"></span>`)}
+      <div class="bt-placar"><div class="bp a"><b>${EQUIPES.a.nome}</b><span id="pa">0</span></div><div class="bp-barra"><i id="barra" style="width:50%"></i></div><div class="bp b"><span id="pb">0</span><b>${EQUIPES.b.nome}</b></div></div>
+      <div class="palco arena"><canvas></canvas><div class="contagem-av" id="cont" hidden></div></div>
+      <div class="bt-digitar"><div class="bt-palavra" id="palavra"></div><div class="bt-prox" id="prox"></div>
+        <div class="bt-meus"><span>${icone('star')} <b id="mpts">0</b> pontos</span><span>${icone('check')} <b id="npal">0</b> palavras</span><span id="serie" class="bt-serie"></span></div></div></div>`;
+    const arena = new Arena($('.arena canvas', c));
+    let equipe = null, largou = false, acabou = false, pts = 0, palavras = 0, acertos = 0, erros = 0, serie = 0, errosTecla = {};
+    let palavra = proximaPalavra(lista), fila = [proximaPalavra(lista, palavra), proximaPalavra(lista)], d = 0, pararTeclas = null, esperaFim = null;
+    const dobro = () => serie >= 10;
+    const mostrarPalavra = () => {
+      $('#palavra', c).innerHTML = !equipe ? '<small>Esperando o professor colocar você em um time...</small>'
+        : `<span class="ok">${esc(palavra.slice(0, d))}</span><span class="atual">${esc(palavra[d] || '')}</span>${esc(palavra.slice(d + 1))}`;
+      $('#prox', c).textContent = equipe ? 'Depois: ' + fila.join('  ') : '';
+      $('#mpts', c).textContent = pts; $('#npal', c).textContent = palavras;
+      $('#serie', c).innerHTML = dobro() ? `${icone('flame')} Ataque dobrado!` : serie ? `${icone('flame')} ${serie} seguidas (10 = ataque dobrado)` : '';
+    };
+    const relogio = contagem($('#cont', c), largada, () => { largou = true; });
+    pararTeclas = ouvirDigitacao({
+      onTexto: txt => {
+        if (!largou || acabou || !equipe) return;
+        for (const ch of txt.toLowerCase()) {
+          if (ch === ' ') continue;
+          if (ch === palavra[d]) {
+            d++; acertos++; som.tecla();
+            if (d >= palavra.length) {
+              pts += palavra.length * (dobro() ? 2 : 1); serie++; palavras++;
+              palavra = fila.shift(); fila.push(proximaPalavra(lista, fila.at(-1))); d = 0; som.pop();
+              enviar({ pts, palavras, erros });
+            }
+          } else {
+            erros++; serie = 0; som.erro(); errosTecla[palavra[d]] = (errosTecla[palavra[d]] || 0) + 1;
+            const p = $('#palavra', c); p.classList.remove('erro'); void p.offsetWidth; p.classList.add('erro');
+            enviar({ erros });
+            break;
+          }
+        }
+        mostrarPalavra();
+      }
+    });
+    const tic = setInterval(() => {
+      const falta = Math.max(0, fimT - agora());
+      $('#tempo', c).textContent = largou ? `${Math.floor(falta / 60000)}:${String(Math.floor(falta / 1000) % 60).padStart(2, '0')}` : '—';
+      // Se o tempo acabou e o painel do professor não respondeu, encerra aqui mesmo.
+      if (largou && falta <= 0 && !acabou) { acabou = true; esperaFim = setTimeout(() => terminar(sala), 6000); }
+    }, 250);
+    function atualizar(s) {
+      sala = s;
+      const novo = s.roster?.[uid]?.equipe || null;
+      if (novo !== equipe) {
+        equipe = novo;
+        $('#meutime', c).innerHTML = equipe ? `<span style="--cor:${EQUIPES[equipe].cor}">${EQUIPES[equipe].nome}</span>` : '';
+        mostrarPalavra();
+      }
+      const p = placarBatalha(s);
+      arena.atualizar(p);
+      $('#pa', c).textContent = Math.round(p.a.media) + ' por aluno';
+      $('#pb', c).textContent = Math.round(p.b.media) + ' por aluno';
+      $('#barra', c).style.width = p.frente * 100 + '%';
+      if (p.destruida && !acabou) acabou = true;
+    }
+    function terminar(s) {
+      if ($('.jogo-fim', c)) return;
+      acabou = true; clearTimeout(esperaFim); clearInterval(tic); clearInterval(relogio); pararTeclas?.(); descarregar();
+      const p = placarBatalha(s), venc = s.info.vencedor || vencedorDe(p);
+      const venceu = !!equipe && venc === equipe;
+      const min = Math.max(0.1, (Math.min(agora(), fimT) - largada) / 60000);
+      const tot = acertos + erros;
+      const r = { pontos: pts * 2 + (venceu ? 150 : 0), acertos, erros, errosTecla, seg: min * 60, ppm: Math.round(acertos / 5 / min), precisao: tot ? Math.round(acertos * 1000 / tot) / 10 : 0,
+        moedas: venceu ? 8 : 3, extra: { vitorias: (a.jogos.batalha?.vitorias || 0) + (venceu ? 1 : 0) } };
+      const out = registrar('batalha', r);
+      const ov = document.createElement('div'); ov.className = 'jogo-fim';
+      ov.innerHTML = `<div class="card av-resultado">
+        <h2>${venc === 'empate' ? 'Empate!' : `${icone('trophy', 'tit')} ${EQUIPES[venc].nome} venceu!`}</h2>
+        <p>${!equipe ? '' : venceu ? 'Parabéns, seu time ganhou!' : venc === 'empate' ? 'Os dois times empataram.' : 'Não foi dessa vez. Na próxima vocês conseguem!'}</p>
+        <p class="muted">Você fez ${pts} pontos com ${palavras} palavras · ${r.precisao}% de precisão</p>
+        ${out ? `<p class="xp">+${out.xp} XP · ${icone('coins')} +${out.moedas} moedas</p>` : ''}
+        <div class="acoes"><a class="bt sec" href="#/jogos">Voltar aos jogos</a></div>
+        <p class="mini muted">Se o professor começar outra partida, esta tela muda sozinha.</p></div>`;
+      $('.aovivo-pg', c)?.append(ov);
+      if (venceu) confete();
+    }
+    mostrarPalavra(); atualizar(sala);
+    return { atualizar, terminar, destruir() { clearInterval(tic); clearInterval(relogio); clearTimeout(esperaFim); pararTeclas?.(); arena.destruir(); } };
   }
 }

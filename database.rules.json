@@ -1,0 +1,27 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "salas": {
+      ".read": "auth != null && auth.token.email === 'paulo15356@go.docente.senai.br'",
+      "$turma": {
+        ".read": "auth != null && (auth.token.email === 'paulo15356@go.docente.senai.br' || auth.token.email.endsWith('.' + $turma.toLowerCase() + '@aluno.teclaninja.example'))",
+        ".write": "auth != null && auth.token.email === 'paulo15356@go.docente.senai.br'",
+        "jogadores": {
+          "$jog": {
+            ".write": "auth != null && $jog === auth.uid && auth.token.email.endsWith('.' + $turma.toLowerCase() + '@aluno.teclaninja.example') && root.child('salas/' + $turma + '/info/estado').exists()",
+            ".validate": "newData.hasChildren(['id', 't']) && newData.child('id').val() + '@aluno.teclaninja.example' === auth.token.email",
+            "id": { ".validate": "newData.isString()" },
+            "t": { ".validate": "newData.val() === now" },
+            "pos": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3000 && (!data.exists() || newData.val() >= data.val()) && (newData.val() === 0 || newData.val() <= (now - root.child('salas/' + $turma + '/info/comecou').val()) / 50 + 10)" },
+            "pts": { ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() || newData.val() >= data.val()) && (newData.val() === 0 || newData.val() <= (now - root.child('salas/' + $turma + '/info/comecou').val()) / 25 + 10)" },
+            "palavras": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "erros": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "fim": { ".validate": "newData.isNumber() && newData.val() >= 1000 && newData.val() <= now - root.child('salas/' + $turma + '/info/comecou').val()" },
+            "$outro": { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}

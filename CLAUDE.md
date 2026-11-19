@@ -37,9 +37,11 @@ public/js/motor.js                  motor de digitação (PPM, precisão, dicas 
 public/js/entrada.js                captura de texto por <textarea> invisível (ver "Acentos")
 public/js/teclado.js                layout ABNT2, dedo de cada tecla, desenho do teclado e das mãos (SVG)
 public/js/jogos.js                  6 jogos: parkour (novo, usa o avatar), chuva, galaxia, corrida, toupeira, teste
+public/js/aovivo.js                 jogos ao vivo (Realtime Database): dados (ouvir/gravar/atualizar), corrida, batalha, Pista, Arena
 public/js/icones.js                 ícones Lucide (ISC) embutidos; icone('nome', 'classe')
 public/js/ui.js                     $, esc, toast(msg, tipo, icone), modal, sons, tema, confete, reduzirImagem
 firestore.rules                     regras de segurança (o professor cola no console do Firebase)
+database.rules.json                 regras do Realtime Database (o professor cola em Realtime Database → Regras)
 ```
 
 ## Modelo de dados (Firestore)
@@ -56,6 +58,23 @@ firestore.rules                     regras de segurança (o professor cola no co
 - Login do aluno = Firebase e-mail/senha com e-mail interno `id@aluno.teclaninja.example` e senha `senha + '#TeclaNinja'`
   (Firebase exige 6+ caracteres; o aluno usa 4+). "Esqueceu a senha": professor exclui a conta no console
   (Authentication → Usuários) e o aluno refaz o "Primeiro acesso"; o progresso fica (o doc usa o mesmo id).
+
+## Jogos ao vivo (Realtime Database)
+
+- SDK `firebase-database.js` carregado só quando usado; endereço em `firebaseConfig.databaseURL` (us-central1).
+  Sem `databaseURL` → `RT_CONFIGURADO` falso e as telas explicam o que falta. Modo demo: árvore na memória da página
+  do professor + "alunos robôs" (o aluno em demo só vê um aviso).
+- Uma sala por turma: `salas/{TURMA}/info` (professor: tipo corrida|batalha, estado espera|jogando|fim, texto ou
+  nivel+duracao, comecou = hora do servidor, podio/vencedor), `roster/{authUid}` (professor: nome curto e avatar
+  lidos do Firestore, equipe a|b), `jogadores/{authUid}` (aluno: id, t=hora do servidor, pos ou pts, palavras, erros, fim).
+  A chave é o uid do Firebase Auth (o id do aluno tem pontos, que o RTDB não aceita em chaves).
+- O painel do professor é o "host": registra quem entra, sorteia times, dá a largada (`comecou` + CONTAGEM 4 s)
+  e encerra (`vigiarSala`). O aluno também encerra sozinho na batalha se o tempo acabar e o painel sumir.
+- Regras: aluno só lê `salas/{sua turma}` (turma = final do e-mail interno), só escreve o próprio `jogadores/{uid}`,
+  `id` igual ao e-mail, pos ≤ (agora − comecou)/50 + 10 (≈ 240 PPM), pts ≤ (agora − comecou)/25 + 10, só sobem.
+  Professor (e-mail fixo nas regras) escreve tudo. Testar com o emulador `database` (porta 9000) e o SDK no Node.
+- Resultado: `registrarJogo(a, 'aovivo' | 'batalha', ...)` com `extra.vitorias`; conquistas `aovivo` e `equipe`.
+  Os jogos ao vivo não entram em `IDS_JOGOS` (conquista "Gamer"), porque dependem do professor.
 
 ## Regras de negócio que já existem (não quebrar)
 
@@ -115,6 +134,8 @@ Colar (`insertFromPaste`) é ignorado. **Nunca** voltar a ler letras só por `ke
 ## Depois de mudar algo
 
 - Mudou `firestore.rules`? **Avise o professor** para copiar o arquivo e publicar em Firestore Database → Regras.
+- Mudou `database.rules.json`? Mesma coisa, em Realtime Database → Regras. O e-mail do professor está em
+  `config.js`, `firestore.rules` e `database.rules.json`.
 - Mudou só `public/`? Basta enviar para a `main`; peça para os alunos recarregarem com Ctrl+Shift+R.
 - Publicação: **Netlify** (https://teclaninja.netlify.app), ligado ao repositório, publica a pasta `public` a cada
   envio para a `main`. O workflow do GitHub Pages foi removido (o Actions da conta estava bloqueado).
@@ -134,5 +155,6 @@ Não há suíte de testes no repositório; testamos com **Playwright** (já inst
    Professor no emulador: `signInWithCredential(GoogleAuthProvider.credential('{"sub":"p1","email":"<e-mail de PROFESSORES>","email_verified":true}'))`.
 4. Digitação: `page.keyboard.type(ch)` serve para letras/ç; para acentos simule o Chromebook via CDP:
    `Input.imeSetComposition({text:'´'})` e depois `Input.insertText({text:'á'})`.
-5. Sempre conferir: lições com acento (l22–l26), os 6 jogos e a tela Avatar, painel em 1366/1280/1024 px sem texto cortado,
+5. Sempre conferir: lições com acento (l22–l26), os 6 jogos, a tela Avatar, os jogos ao vivo (professor + vários alunos
+   em navegadores separados no emulador; no teste use um e-mail de professor fictício trocado só na cópia das regras), painel em 1366/1280/1024 px sem texto cortado,
    celular 390 px sem rolagem horizontal, modo escuro, e — se mexer em regras — tentativas de burla devem dar `permission-denied`.

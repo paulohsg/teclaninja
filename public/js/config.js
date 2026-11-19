@@ -13,7 +13,10 @@ export const firebaseConfig = {
   projectId: "teclaninja-escola",
   storageBucket: "teclaninja-escola.firebasestorage.app",
   messagingSenderId: "203116530041",
-  appId: "1:203116530041:web:35227544f0cbbfe52507a8"
+  appId: "1:203116530041:web:35227544f0cbbfe52507a8",
+  // Endereço do Realtime Database (jogos ao vivo). Confira no console do Firebase:
+  // Criação → Realtime Database → aba Dados (o endereço aparece no topo da lista).
+  databaseURL: "https://teclaninja-escola-default-rtdb.firebaseio.com"
 };
 
 // 2) Contas Google que podem acessar o Painel do Professor.

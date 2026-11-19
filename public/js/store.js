@@ -17,9 +17,11 @@ function fb() {
   return fbp ??= (async () => {
     const [A, Au, F] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(CDN + f)));
     const app = A.initializeApp(firebaseConfig);
-    return { auth: Au.getAuth(app), db: F.getFirestore(app), Au, F };
+    return { app, auth: Au.getAuth(app), db: F.getFirestore(app), Au, F };
   })();
 }
+/** App e login do Firebase (usados pelos jogos ao vivo, que carregam o Realtime Database à parte). */
+export const baseFirebase = () => fb();
 
 // Alunos entram com nome + turma + senha. Por trás, o Firebase usa um e-mail interno
 // (nunca recebe mensagens) no formato primeiro.ultimo.codigo@aluno.teclaninja.example
